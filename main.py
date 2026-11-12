@@ -22,7 +22,11 @@ async def run() -> None:
     config.DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
     client = build_client()
-    await client.start()
+    try:
+        await client.start()
+    except Exception as e:
+        log.error(f"Selfbot failed to start (maybe no session?): {e}")
+        return
 
     me = await client.get_me()
     log.info("Logged in as %s (id=%s)", me.first_name, me.id)

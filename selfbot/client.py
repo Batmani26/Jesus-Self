@@ -2,6 +2,7 @@
 import logging
 
 from telethon import TelegramClient
+from telethon.sessions import StringSession
 
 from .config import config
 
@@ -13,5 +14,8 @@ def build_client() -> TelegramClient:
         raise SystemExit(
             "API_ID / API_HASH missing. Fill them in .env (get them from https://my.telegram.org)."
         )
-    client = TelegramClient(config.SESSION_NAME, config.API_ID, config.API_HASH)
+    if config.SESSION_STRING:
+        client = TelegramClient(StringSession(config.SESSION_STRING), config.API_ID, config.API_HASH)
+    else:
+        client = TelegramClient(config.SESSION_NAME, config.API_ID, config.API_HASH)
     return client
