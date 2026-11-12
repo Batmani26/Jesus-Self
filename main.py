@@ -5,7 +5,6 @@ Usage:
 """
 import asyncio
 import logging
-from keep_alive import keep_alive
 
 from selfbot.client import build_client
 from selfbot.config import config
@@ -39,7 +38,6 @@ async def run() -> None:
 
 
 if __name__ == "__main__":
-    keep_alive()
     try:
         asyncio.run(run())
     except KeyboardInterrupt:
