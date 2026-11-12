@@ -1,7 +1,6 @@
 """ربات مدیریت (Management Bot) - Jesus Self"""
 import asyncio
 import logging
-from keep_alive import keep_alive
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, Message, ForceReply, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -274,7 +273,6 @@ async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    keep_alive()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
