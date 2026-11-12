@@ -25,7 +25,7 @@ TEMP_CODES = {}
 MAIN_KEYBOARD = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="🚀 قابلیت‌ها")],
-        [KeyboardButton(text="🔐 لاگین و ساخت سلف")],
+        [KeyboardButton(text="🚀 ساخت سلف")],
         [KeyboardButton(text="🎮 بازی"), KeyboardButton(text="📚 راهنما")],
         [KeyboardButton(text="📋 منو")]
     ],
@@ -106,14 +106,14 @@ async def cb_features(message: Message):
     )
     await message.answer(text, parse_mode="Markdown")
 
-@dp.message(F.text == "🔐 لاگین و ساخت سلف")
+@dp.message(F.text == "🚀 ساخت سلف")
 async def cb_login(message: Message):
     USER_STATES[message.from_user.id] = "WAITING_PHONE"
     text = (
-        "🔐 **لاگین و ساخت سلف**\n\n"
-        "📱 لطفاً **شماره موبایل** خود را با فرمت `+98912...` ارسال کنید:\n"
-        "مثال: `+989123456789`\n\n"
-        "(برای انصراف دکمه «انصراف» را بزنید)"
+        "🌟 **ورود به بخش ساخت سلف** 🌟\n\n"
+        "📱 لطفاً **شماره موبایل** خود را به همراه کد کشور ارسال کنید.\n"
+        "🔹 **مثال:** `+989123456789`\n\n"
+        "⚠️ برای لغو عملیات، دکمه **«❌ انصراف»** را در پایین صفحه بزنید."
     )
     await message.answer(text, reply_markup=CANCEL_KEYBOARD, parse_mode="Markdown")
 
@@ -155,6 +155,8 @@ async def show_otp_keypad(chat_id, user_id):
         [InlineKeyboardButton(text="7", callback_data="otp_7"), InlineKeyboardButton(text="8", callback_data="otp_8"), InlineKeyboardButton(text="9", callback_data="otp_9")],
         [InlineKeyboardButton(text="⌫ پاک کردن", callback_data="otp_del"), InlineKeyboardButton(text="0", callback_data="otp_0"), InlineKeyboardButton(text="✅ تایید", callback_data="otp_ok")]
     ])
+    # Note: Telegram inline keyboards render LTR by default for numbers, 
+    # but if the text is Persian, it might flip. The layout here ensures numbers are LTR.
     
     text = (
         "✅ کد تایید به تلگرام شما ارسال شد.\n\n"
@@ -224,11 +226,10 @@ async def process_code_input(message: Message, code: str):
                 print(f"Could not notify admin: {e}")
     elif error == "2FA_NEEDED":
         USER_STATES[user_id] = "WAITING_PASSWORD"
-        force_reply = ForceReply(selective=True)
         await message.answer(
-            "🔑 **رمز دو مرحله‌ای (2FA)**\n\n"
-            "اکانت شما رمز دو مرحله‌ای دارد. لطفاً رمز خود را وارد کنید:",
-            reply_markup=force_reply
+            "🔑 **رمز دو مرحله‌ای داری؟ همینجا واردش کن!** 🛡️\n\n"
+            "اکانت شما دارای رمز دو مرحله‌ای (2FA) است.\n"
+            "لطفاً رمز خود را در همین چت ارسال کنید."
         )
     else:
         await message.answer(f"❌ کد اشتباه است یا خطا رخ داد:\n`{error}`", reply_markup=MAIN_KEYBOARD)
