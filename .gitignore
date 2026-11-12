@@ -1,0 +1,29 @@
+# Secrets
+.env
+*.session
+*.session-journal
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Downloads & temp
+downloads/
+*.mp3
+*.mp4
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Database
+bot/users.db
+
+# Large files
+vscode_setup.exe
+*.exe
+*.zip
