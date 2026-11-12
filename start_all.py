@@ -21,11 +21,15 @@ async def start_web_server():
 
 async def run_all():
     log.info("Starting Management Bot and Selfbot...")
-    await asyncio.gather(
-        dp.start_polling(bot),
-        selfbot_run(),
-        start_web_server()
-    )
+    try:
+        await asyncio.gather(
+            dp.start_polling(bot),
+            selfbot_run(),
+            start_web_server()
+        )
+    except Exception as e:
+        log.error(f"Crash in run_all: {e}", exc_info=True)
+        raise
 
 if __name__ == "__main__":
     try:

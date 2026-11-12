@@ -25,7 +25,7 @@ async def run() -> None:
     try:
         await client.start()
     except Exception as e:
-        log.error(f"Selfbot failed to start (maybe no session?): {e}")
+        log.error(f"Selfbot failed to start: {e}", exc_info=True)
         return
 
     me = await client.get_me()
