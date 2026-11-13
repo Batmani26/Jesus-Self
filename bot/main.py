@@ -159,11 +159,17 @@ async def refresh_inline_panel(callback: CallbackQuery):
         f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
         "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
     )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
+        [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
+        [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
+        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
+    ])
     try:
         if callback.message:
-            await callback.message.edit_text(text, reply_markup=callback.message.reply_markup, parse_mode="Markdown")
+            await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
         else:
-            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=callback.message.reply_markup if callback.message else None, parse_mode="Markdown")
+            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="Markdown")
         await callback.answer("✅ پنل بروزرسانی شد!")
     except Exception as e:
         await callback.answer(f"❌ خطا در بروزرسانی: {e}", show_alert=True)
