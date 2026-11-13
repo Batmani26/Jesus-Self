@@ -8,7 +8,7 @@ from selfbot import __version__
 from selfbot.config import config
 
 
-HELP_TEXT = """🤖 **Jesus Self — Commands**
+HELP_TEXT = """🤖 **𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭 — Commands**
 
 • `.help` — this menu
 • `.ping` — latency check
@@ -42,7 +42,7 @@ def register(client) -> None:
         text = (
             f"👤 **{me.first_name}** (@{me.username or '-'})\n"
             f"🆔 `{me.id}`\n"
-            f"📦 Jesus Self `v{__version__}`\n"
+            f"📦 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭 `v{__version__}`\n"
             f"🖥 `{platform.system()} {platform.release()}`"
         )
         await event.edit(text)

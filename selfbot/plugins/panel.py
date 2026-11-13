@@ -19,10 +19,11 @@ def register(client) -> None:
             [Button.inline("❌ بستن پنل", data=b"feat_close")]
         ]
         text = (
-            "🤖 <b>پنل کنترل Jesse Self</b>\n\n"
+            "🤖 <b>پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭</b>\n\n"
             "از منوی زیر یک قابلیت را انتخاب کنید:"
         )
-        await event.client.send_message(event.chat_id, text, buttons=buttons, link_preview=False, parse_mode="html")
+        # Use send_message with parse_mode='html' to ensure buttons render
+        await event.client.send_message(event.chat_id, text, buttons=buttons, parse_mode='html')
         await event.delete()
 
     @client.on(events.CallbackQuery())

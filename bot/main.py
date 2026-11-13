@@ -41,7 +41,7 @@ async def cmd_start(message: Message):
     
     caption = (
         f"سلام **{message.from_user.first_name}** عزیز! 👋\n\n"
-        "به دنیای **Jesus Self** خوش آمدی! 🚀\n\n"
+        "به دنیای **𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭** خوش آمدی! 🚀\n\n"
         "✨ اینجا می‌تونی سلف‌بات اختصاصی خودت رو بسازی و از تمام امکاناتش لذت ببری.\n\n"
         "👇 از منوی زیر انتخاب کن:"
     )
@@ -91,7 +91,7 @@ async def cmd_charge(message: Message):
         msg = (
             "💎✨ **شارژ حساب با موفقیت انجام شد!** ✨💎\n\n"
             f"🎁 مقدار **{amount}** یاقوت به کیف پول شما واریز شد.\n\n"
-            "🚀 حالا می‌توانید از تمام امکانات **Jesus Self** لذت ببرید!\n"
+            "🚀 حالا می‌توانید از تمام امکانات **𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭** لذت ببرید!\n"
             "📊 برای مشاهده موجودی و زمان باقیمانده به بخش «حساب کاربری» بروید."
         )
         await bot.send_message(target_id, msg, parse_mode="Markdown")
@@ -120,7 +120,7 @@ async def cb_account(message: Message):
 @dp.message(F.text == "📚 راهنما")
 async def cb_help(message: Message):
     text = (
-        "📚 **راهنمای Jesus Self Manager:**\n\n"
+        "📚 **راهنمای 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭 Manager:**\n\n"
         "این ربات به شما امکان می‌دهد یک سلف‌بات بسازید.\n\n"
         "**مراحل:**\n"
         "1️⃣ روی دکمه «🚀 ساخت سلف» کلیک کنید.\n"
@@ -165,7 +165,7 @@ async def process_game(callback: CallbackQuery):
 @dp.message(F.text == "🚀 قابلیت‌ها")
 async def cb_features(message: Message):
     text = (
-        "🚀 **قابلیت‌های Jesus Self:**\n\n"
+        "🚀 **قابلیت‌های 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭:**\n\n"
         "• 📸 ذخیره خودکار عکس/ویدیوی زمان‌دار\n"
         "• 🎙 تبدیل متن به ویس (TTS)\n"
         "• 🎵 جستجوی آهنگ و ارسال\n"
