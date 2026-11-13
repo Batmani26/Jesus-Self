@@ -9,6 +9,7 @@ def register(client) -> None:
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل$"))
     async def panel_cmd(event: events.NewMessage.Event) -> None:
+        # print("Panel command triggered")  # for debugging
         buttons = [
             [Button.inline("🎮 بازی ها", data=b"cat_games")],
             [Button.inline("🛠 ابزار ها", data=b"cat_tools")],
@@ -21,7 +22,7 @@ def register(client) -> None:
             "🤖 **پنل کنترل Jesse Self**\n\n"
             "از منوی زیر یک قابلیت را انتخاب کنید:"
         )
-        await event.edit(text, buttons=buttons, parse_mode="md")
+        await event.edit(text, buttons=buttons, parse_mode="html")
 
     @client.on(events.CallbackQuery())
     async def panel_callback(event: events.CallbackQuery.Event) -> None:
