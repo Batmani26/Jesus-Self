@@ -256,28 +256,7 @@ async def cb_manage_self(message: Message):
     ])
     await message.answer(text, reply_markup=kb, parse_mode="Markdown")
 
-@dp.callback_query(F.data == "toggle_on")
-async def cb_toggle_on(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    balance = await get_yaqoot(user_id)
-    if balance < 10:
-        await callback.answer("❌ موجودی یاقوت شما کمتر از ۱۰ است!", show_alert=True)
-        return
-    await deduct_yaqoot(user_id, 10)
-    await set_user_active(user_id, 1)
-    await callback.answer("✅ سلف شما با موفقیت روشن شد!", show_alert=True)
-    await callback.message.edit_text("✅ **سلف شما با موفقیت روشن شد.**\n\nبرای مشاهده وضعیت جدید، دکمه بروزرسانی را بزنید.", parse_mode="Markdown")
-
-@dp.callback_query(F.data == "toggle_off")
-async def cb_toggle_off(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    await set_user_active(user_id, 0)
-    await callback.answer("❌ سلف شما با موفقیت خاموش شد!", show_alert=True)
-    await callback.message.edit_text("❌ **سلف شما خاموش شد.**\n\nبرای روشن کردن مجدد، دکمه بروزرسانی را بزنید.", parse_mode="Markdown")
-
-@dp.callback_query(F.data == "refresh_manage")
-async def cb_refresh_manage(callback: CallbackQuery):
-    user_id = callback.from_user.id
+async def build_manage_text(user_id):
     user = await get_user(user_id)
     balance = await get_yaqoot(user_id)
     is_active = user['is_active'] if user else 0
@@ -295,6 +274,33 @@ async def cb_refresh_manage(callback: CallbackQuery):
         [InlineKeyboardButton(text="✅ روشن کردن", callback_data="toggle_on"), InlineKeyboardButton(text="❌ خاموش کردن", callback_data="toggle_off")],
         [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_manage")]
     ])
+    return text, kb
+
+@dp.callback_query(F.data == "toggle_on")
+async def cb_toggle_on(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    balance = await get_yaqoot(user_id)
+    if balance < 10:
+        await callback.answer("❌ موجودی یاقوت شما کمتر از ۱۰ است!", show_alert=True)
+        return
+    await deduct_yaqoot(user_id, 10)
+    await set_user_active(user_id, 1)
+    text, kb = await build_manage_text(user_id)
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+    await callback.answer("✅ سلف شما با موفقیت روشن شد!", show_alert=True)
+
+@dp.callback_query(F.data == "toggle_off")
+async def cb_toggle_off(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    await set_user_active(user_id, 0)
+    text, kb = await build_manage_text(user_id)
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+    await callback.answer("❌ سلف شما با موفقیت خاموش شد!", show_alert=True)
+
+@dp.callback_query(F.data == "refresh_manage")
+async def cb_refresh_manage(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    text, kb = await build_manage_text(user_id)
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
     await callback.answer("✅ بروزرسانی شد!")
 
