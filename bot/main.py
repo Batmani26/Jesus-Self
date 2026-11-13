@@ -317,10 +317,16 @@ async def close_inline_panel(callback: CallbackQuery):
         if callback.message:
             await callback.message.delete()
         else:
-            await callback.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.inline_message_id)
-    except Exception:
-        pass
-    await callback.answer()
+            await callback.bot.edit_message_text(
+                inline_message_id=callback.inline_message_id,
+                text="✅ **پنل با موفقیت بسته شد.**",
+                reply_markup=None,
+                parse_mode="Markdown"
+            )
+    except Exception as e:
+        await callback.answer(f"خطا در بستن: {e}", show_alert=True)
+        return
+    await callback.answer("✅ پنل با موفقیت بسته شد.", show_alert=True)
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
