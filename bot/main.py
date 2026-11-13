@@ -40,12 +40,21 @@ CANCEL_KEYBOARD = ReplyKeyboardMarkup(
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     add_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
-    text = (
-        f"سلام {message.from_user.first_name} عزیز! 👋\n\n"
-        "به **Jesus Self Manager** خوش آمدید.\n"
-        "از منوی زیر انتخاب کنید:"
+    
+    caption = (
+        f"سلام **{message.from_user.first_name}** عزیز! 👋\n\n"
+        "به دنیای **Jesus Self** خوش آمدی! 🚀\n\n"
+        "✨ اینجا می‌تونی سلف‌بات اختصاصی خودت رو بسازی و از تمام امکاناتش لذت ببری.\n\n"
+        "👇 از منوی زیر انتخاب کن:"
     )
-    await message.answer(text, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
+    
+    # به جای لینک، می‌تونی آدرس عکسی که می‌خوای رو اینجا بذاری
+    photo_url = "https://i.ibb.co/6PZ8Z5K/jesus-self.jpg" 
+    
+    try:
+        await message.answer_photo(photo=photo_url, caption=caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
+    except Exception:
+        await message.answer(caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
 
 @dp.message(F.text == "📚 راهنما")
 async def cb_help(message: Message):
