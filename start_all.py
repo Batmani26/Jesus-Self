@@ -70,7 +70,7 @@ async def run_all():
     try:
         await asyncio.gather(
             dp.start_polling(bot),
-            manager_loop(),
+            # manager_loop(),
             start_web_server(),
             billing_loop(),
             panel_updater_loop()

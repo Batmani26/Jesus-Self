@@ -23,6 +23,7 @@ dp = Dispatcher()
 # آیدی عددی ادمین (خودت) رو اینجا بذار تا پیام لاگین رو برات بفرسته
 # برای پیدا کردن آیدی خودت میتونی از ربات @userinfobot استفاده کنی
 ADMIN_ID = 7099566033
+MAINTENANCE_MODE = True
 
 USER_STATES = {}
 CLIENTS = {}
@@ -244,6 +245,9 @@ async def close_inline_panel(callback: CallbackQuery):
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
+    if MAINTENANCE_MODE and message.from_user.id != ADMIN_ID:
+        await message.answer("⚠️ **ربات موقتاً خاموش است.**\n\nلطفاً بعداً تلاش کنید.")
+        return
     await add_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
     
     caption = (
