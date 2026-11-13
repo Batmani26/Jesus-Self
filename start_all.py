@@ -2,6 +2,9 @@
 import asyncio
 import logging
 from aiohttp import web
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s")
+log = logging.getLogger("start_all")
 from bot.main import dp, bot, panel_updater_loop
 from bot.database import init_db, get_all_active_users, deduct_yaqoot, deactivate_user
 from selfbot.manager import manager_loop, osint_processor
@@ -49,9 +52,6 @@ async def billing_loop():
         except Exception as e:
             log.error(f"Billing loop error: {e}")
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s")
-log = logging.getLogger("start_all")
-
 async def start_web_server():
     async def handle(request):
         return web.Response(text="Jesus Self Bot is alive!")
@@ -67,18 +67,23 @@ async def run_all():
     log.info("Connecting to database...")
     await init_db()
     log.info("Starting Management Bot and Selfbot...")
-    try:
-        await asyncio.gather(
-            dp.start_polling(bot),
-            manager_loop(),
-            osint_processor(),
-            start_web_server(),
-            billing_loop(),
-            panel_updater_loop()
-        )
-    except Exception as e:
-        log.error(f"Crash in run_all: {e}", exc_info=True)
-        raise
+    
+    async def safe_loop(loop_func, name):
+        while True:
+            try:
+                await loop_func()
+            except Exception as e:
+                log.error(f"Error in {name}: {e}", exc_info=True)
+                await asyncio.sleep(5)
+                
+    await asyncio.gather(
+        dp.start_polling(bot),
+        start_web_server(),
+        safe_loop(manager_loop, "manager_loop"),
+        safe_loop(osint_processor, "osint_processor"),
+        safe_loop(billing_loop, "billing_loop"),
+        safe_loop(panel_updater_loop, "panel_updater_loop")
+    )
 
 if __name__ == "__main__":
     try:
