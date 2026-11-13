@@ -20,6 +20,7 @@ async def osint_processor():
         target = req['target']
         user_id = req['user_id']
         log.info(f"Processing OSINT request for {target} from user {user_id}")
+        asyncio.create_task(process_osint_request(req))
         
         # Ensure admin client is running
         from selfbot.config import config
@@ -53,7 +54,6 @@ async def osint_processor():
         clean_text = ""
         for attempt in range(3):
             try:
-                # Check if we have a conversation with the target bot
                 TARGET_BOT = "@funstatloper_bot"
                 async with admin_client.conversation(TARGET_BOT, timeout=20) as conv:
                     sent_msg = await conv.send_message(target)
@@ -74,7 +74,7 @@ async def osint_processor():
                     break
             except Exception as e:
                 log.error(f"OSINT attempt {attempt+1} failed: {e}")
-                await asyncio.sleep(1)
+                # No sleep here to be faster
 
         if user_id in ACTIVE_CLIENTS:
             if success and clean_text:

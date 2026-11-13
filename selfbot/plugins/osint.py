@@ -42,7 +42,5 @@ def register(client) -> None:
                 from selfbot.manager import OSINT_QUEUE
                 await OSINT_QUEUE.put({"target": target, "user_id": me.id})
                 await event.edit("⏳ درخواست شما در صف بررسی قرار گرفت. نتیجه به زودی در سیو مسیج ارسال می‌شود.")
-            except asyncio.TimeoutError:
-                await event.edit("❌ ربات امنیتی پاسخی نداد (Timeout).")
             except Exception as e:
                 await event.edit(f"❌ خطا در استعلام: `{e}`")

@@ -27,23 +27,26 @@ def register(client) -> None:
     @client.on(events.CallbackQuery())
     async def panel_callback(event: events.CallbackQuery.Event) -> None:
         data = event.data.decode('utf-8')
-        if data == "feat_close":
-            await event.delete()
-        elif data == "feat_status":
-            await event.answer("✅ سلف‌بات آنلاین است.", alert=True)
-        elif data == "feat_saver":
-            await event.answer("📸 قابلیت ذخیره زمان‌دار فعال است. فقط کافیه کسی برات عکس زمان‌دار بفرسته.", alert=True)
-        elif data == "feat_voice":
-            await event.answer("🎙 برای تبدیل متن به ویس از دستور .say <text> استفاده کن.", alert=True)
-        elif data == "feat_music":
-            await event.answer("🎵 برای جستجوی آهنگ از دستور .song <name> استفاده کن.", alert=True)
-        elif data == "cat_games":
-            await event.answer("🎮 بخش بازی‌ها (به‌زودی)", alert=True)
-        elif data == "cat_tools":
-            await event.answer("🛠 بخش ابزارها (به‌زودی)", alert=True)
-        elif data == "cat_fun":
-            await event.answer("👁 بخش نظارت و سرگرمی (به‌زودی)", alert=True)
-        elif data == "cat_cheat":
-            await event.answer("🎭 بخش تقلب (به‌زودی)", alert=True)
-        elif data == "cat_security":
-            await event.answer("🛡 بخش استاک و امنیت (به‌زودی)", alert=True)
+        try:
+            if data == "feat_close":
+                await event.delete()
+            elif data == "feat_status":
+                await event.answer("✅ سلف‌بات آنلاین است.", alert=True)
+            elif data == "feat_saver":
+                await event.answer("📸 قابلیت ذخیره زمان‌دار فعال است. فقط کافیه کسی برات عکس زمان‌دار بفرسته.", alert=True)
+            elif data == "feat_voice":
+                await event.answer("🎙 برای تبدیل متن به ویس از دستور .say <text> استفاده کن.", alert=True)
+            elif data == "feat_music":
+                await event.answer("🎵 برای جستجوی آهنگ از دستور .song <name> استفاده کن.", alert=True)
+            elif data == "cat_games":
+                await event.answer("🎮 بخش بازی‌ها (به‌زودی)", alert=True)
+            elif data == "cat_tools":
+                await event.answer("🛠 بخش ابزارها (به‌زودی)", alert=True)
+            elif data == "cat_fun":
+                await event.answer("👁 بخش نظارت و سرگرمی (به‌زودی)", alert=True)
+            elif data == "cat_cheat":
+                await event.answer("🎭 بخش تقلب (به‌زودی)", alert=True)
+            elif data == "cat_security":
+                await event.answer("🛡 بخش استاک و امنیت (به‌زودی)", alert=True)
+        except Exception:
+            pass
