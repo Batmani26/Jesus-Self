@@ -34,9 +34,13 @@ async def osint_processor():
                     admin_client = client
                 except Exception as e:
                     log.error(f"Failed to start admin client for OSINT: {e}")
+                    # Notify the user that it failed
+                    if user_id in ACTIVE_CLIENTS:
+                        await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ خطا در پردازش استاک (عدم دسترسی به اکانت اصلی): {e}")
                     continue
             else:
-                log.error("No SESSION_STRING for admin, cannot process OSINT")
+                if user_id in ACTIVE_CLIENTS:
+                    await ACTIVE_CLIENTS[user_id].send_message("me", "❌ خطا: SESSION_STRING ادمین تنظیم نشده است.")
                 continue
             
         try:
