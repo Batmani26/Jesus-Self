@@ -84,10 +84,16 @@ async def cb_account(message: Message):
     user_id = message.from_user.id
     balance = get_yaqoot(user_id)
     
+    remaining_hours = balance // 2
+    remaining_days = remaining_hours // 24
+    
     text = (
         "👤 **حساب کاربری شما**\n\n"
         f"🆔 **آیدی عددی:** `{user_id}`\n"
         f"💎 **موجودی یاقوت:** `{balance}`\n\n"
+        f"⏳ **زمان باقیمانده:**\n"
+        f"🕒 **{remaining_hours}** ساعت\n"
+        f"📅 **{remaining_days}** روز\n\n"
         "⚠️ **توجه:** هر ۱ ساعت، ۲ یاقوت بابت اجرای سلف‌بات مصرف می‌شود."
     )
     await message.answer(text, parse_mode="Markdown")
