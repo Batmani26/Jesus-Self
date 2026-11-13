@@ -53,31 +53,34 @@ def register(client) -> None:
         await event.edit("⏳ در حال تلاش برای برنده شدن...")
         
         # Spam the callback query
-        for _ in range(50):
+        bot = await event.client.get_entity('@MeowieQVBot')
+        for _ in range(100):
             try:
-                bot = await event.client.get_entity('@MeowieQVBot')
+                # Send the callback request
                 res = await client(functions.messages.GetBotCallbackAnswerRequest(
                     peer=bot,
                     msg_id=bot_msg.id,
                     data=data
                 ))
                 
-                # Check if the bot returned a game
-                if hasattr(res, 'game') and res.game:
-                    if hasattr(res.game, 'value') and res.game.value == desired:
+                # Check game result in the response
+                if hasattr(res, 'game') and res.game and hasattr(res.game, 'value'):
+                    if res.game.value == desired:
                         await event.delete()
                         return
                 
-                # Wait for the bot to reply with the dice in the chat
-                await asyncio.sleep(1.5)
+                # Check chat for the dice
+                await asyncio.sleep(0.5)
                 messages = await client.get_messages(event.chat_id, limit=3)
                 for msg in messages:
                     if msg.from_id == bot.id and msg.media:
                         if hasattr(msg.media, 'value') and msg.media.value == desired:
                             await event.delete()
                             return
+                            
             except Exception as e:
-                print(f"Meowie error: {e}")
-                await asyncio.sleep(0.5)
+                # If the bot says 'not allowed' or similar, we might need to start a new game
+                # But we just continue for now
+                pass
                 
         await event.edit("❌ متاسفانه موفق نشدیم.")
