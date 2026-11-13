@@ -23,6 +23,12 @@ async def osint_processor():
         # Ensure admin client is running
         from selfbot.config import config
         admin_client = ACTIVE_CLIENTS.get(ADMIN_ID)
+        if admin_client:
+            try:
+                await admin_client.get_me()
+            except Exception:
+                admin_client = None
+                
         if not admin_client:
             if config.SESSION_STRING:
                 try:
@@ -34,7 +40,6 @@ async def osint_processor():
                     admin_client = client
                 except Exception as e:
                     log.error(f"Failed to start admin client for OSINT: {e}")
-                    # Notify the user that it failed
                     if user_id in ACTIVE_CLIENTS:
                         await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ خطا در پردازش استاک (عدم دسترسی به اکانت اصلی): {e}")
                     continue
