@@ -44,7 +44,7 @@ def register(client) -> None:
                     response = await conv.get_response()
                     
                 # ارسال پاسخ به سیو مسیج
-                await client.send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{response.text}")
+                await client.send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{response.text}\n\n✨ **Jesus Self** ✨")
                 await event.delete()
             except asyncio.TimeoutError:
                 await event.edit("❌ ربات امنیتی پاسخی نداد (Timeout).")
