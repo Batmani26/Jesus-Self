@@ -29,7 +29,7 @@ def register(client) -> None:
             del USER_STATES[me.id]
         await event.edit("❌ عملیات لغو شد.")
 
-    @client.on(events.NewMessage(outgoing=True))
+    @client.on(events.NewMessage(outgoing=True, pattern=r"^(?!\.).+"))
     async def process_target(event: events.NewMessage.Event):
         me = await client.get_me()
         if USER_STATES.get(me.id) == "WAITING_TARGET":
