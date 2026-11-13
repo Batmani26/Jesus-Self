@@ -7,9 +7,9 @@ from selfbot.config import config
 def register(client) -> None:
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل"))
     async def panel_cmd(event: events.NewMessage.Event) -> None:
-        # print("Panel command triggered")  # for debugging
+        print(f"[DEBUG] Panel command matched in chat: {event.chat_id}")
         buttons = [
             [Button.inline("🎮 بازی ها", data=b"cat_games")],
             [Button.inline("🛠 ابزار ها", data=b"cat_tools")],
