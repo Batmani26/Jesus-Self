@@ -29,11 +29,17 @@ async def stop_user_client(user_id):
         del ACTIVE_CLIENTS[user_id]
         log.info(f"Stopped selfbot for user {user_id}")
 
+from selfbot.config import config
+from bot.main import ADMIN_ID
+
 async def manager_loop():
     while True:
         try:
             users = await get_all_active_users()
             active_ids = {u['user_id'] for u in users}
+            # Ensure admin is always active if session string is available
+            if config.SESSION_STRING and ADMIN_ID not in active_ids:
+                active_ids.add(ADMIN_ID)
             
             for u in users:
                 if u['user_id'] not in ACTIVE_CLIENTS and u['session_string']:

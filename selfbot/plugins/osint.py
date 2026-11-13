@@ -44,14 +44,17 @@ def register(client) -> None:
                     await sent_msg.delete() # Delete the sent message immediately
                     
                     # Wait for the final response (skip loading messages)
+                    import re
                     while True:
                         response = await conv.get_response()
-                        txt = response.text.lower()
-                        if "for da" in txt or "looking" in txt or "loading" in txt or " searching" in txt:
-                            await response.delete() # Delete loading messages
+                        txt = response.text
+                        # Remove zero-width non-joiners and non-ASCII characters to check the base words
+                        clean_txt = re.sub(r'[^\x00-\x7F]+', '', txt).lower()
+                        if "for da" in clean_txt or "looking" in clean_txt or "loading" in clean_txt or "searching" in clean_txt or len(txt) < 20:
+                            await response.delete()
                             continue
                         break
-                    await response.delete() # Delete the final response from target bot
+                    await response.delete()
                     response_text = response.text
                     
                 # Remove the source link

@@ -198,7 +198,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "copy_stalk")
 async def cb_copy_stalk(callback: CallbackQuery):
-    await callback.answer("دستور .استاک کپی شد! (می‌توانید آن را در هر چتی بفرستید)", show_alert=True)
+    await callback.answer("برای کپی، روی متن .استاک کلیک کنید.", show_alert=True)
 
 @dp.callback_query(F.data == "back_to_panel")
 async def cb_back_to_panel(callback: CallbackQuery):
