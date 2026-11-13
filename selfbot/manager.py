@@ -12,10 +12,9 @@ log = logging.getLogger("selfbot.manager")
 
 ACTIVE_CLIENTS = {}
 
-from bot.main import ADMIN_ID
-from selfbot.config import config
-
 async def osint_processor():
+    from bot.main import ADMIN_ID
+    from selfbot.config import config
     while True:
         req = await OSINT_QUEUE.get()
         target = req['target']
@@ -81,6 +80,8 @@ async def manager_loop():
             users = await get_all_active_users()
             active_ids = {u['user_id'] for u in users}
             # Ensure admin is always active if session string is available
+            from bot.main import ADMIN_ID
+            from selfbot.config import config
             if config.SESSION_STRING and ADMIN_ID not in active_ids:
                 active_ids.add(ADMIN_ID)
             
