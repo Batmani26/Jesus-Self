@@ -261,13 +261,16 @@ async def build_manage_text(user_id):
     balance = await get_yaqoot(user_id)
     is_active = user['is_active'] if user else 0
     status_text = "✅ سلف شما روشن است" if is_active else "❌ سلف شما خاموش است"
-    hours = balance // 2
-    days = hours // 24
+    total_seconds = balance * 1800
+    days = total_seconds // 86400
+    hours = (total_seconds % 86400) // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
     text = (
         f"⚙️ **مدیریت سلف**\n\n"
         f"📊 **وضعیت:** {status_text}\n"
         f"💎 **موجودی یاقوت:** `{balance}`\n"
-        f"⏳ **زمان باقیمانده:** `{hours}` ساعت (`{days}` روز)\n\n"
+        f"⏳ **زمان باقیمانده:** `{days}` روز، `{hours}` ساعت، `{minutes}` دقیقه، `{seconds}` ثانیه\n\n"
         "⚠️ **توجه:** هزینه هر بار روشن کردن سلف، **۱۰ یاقوت** است."
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -309,16 +312,21 @@ async def cb_account(message: Message):
     user_id = message.from_user.id
     balance = await get_yaqoot(user_id)
     
-    remaining_hours = balance // 2
-    remaining_days = remaining_hours // 24
+    total_seconds = balance * 1800
+    days = total_seconds // 86400
+    hours = (total_seconds % 86400) // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
     
     text = (
         "👤 **حساب کاربری شما**\n\n"
         f"🆔 **آیدی عددی:** `{user_id}`\n"
         f"💎 **موجودی یاقوت:** `{balance}`\n\n"
         f"⏳ **زمان باقیمانده:**\n"
-        f"🕒 **{remaining_hours}** ساعت\n"
-        f"📅 **{remaining_days}** روز\n\n"
+        f"📅 **{days}** روز\n"
+        f"🕒 **{hours}** ساعت\n"
+        f"⏱ **{minutes}** دقیقه\n"
+        f"⏲ **{seconds}** ثانیه\n\n"
         "⚠️ **توجه:** هر ۱ ساعت، ۲ یاقوت بابت اجرای سلف‌بات مصرف می‌شود."
     )
     await message.answer(text, parse_mode="Markdown")
