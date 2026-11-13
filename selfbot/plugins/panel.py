@@ -11,7 +11,7 @@ def register(client) -> None:
     async def panel_cmd(event: events.NewMessage.Event) -> None:
         try:
             results = await client.inline_query('SelfJesusBot', 'panel')
-            await results[0].click(event.chat_id, reply_to_msg_id=event.reply_to_msg_id)
+            await results[0].click(event.chat_id)
             await event.delete()
         except Exception as e:
             await event.edit(f"❌ خطا در باز کردن پنل: {e}")
