@@ -49,7 +49,7 @@ async def cmd_start(message: Message):
     )
     
     # به جای لینک، می‌تونی آدرس عکسی که می‌خوای رو اینجا بذاری
-    photo_url = "https://i.ibb.co/6PZ8Z5K/jesus-self.jpg" 
+    photo_url = "https://www.picofile.com/f/V987BTXfXJ/Jesus-Self-Neon-Telegram-Fantasy-Poster.png" 
     
     try:
         await message.answer_photo(photo=photo_url, caption=caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
