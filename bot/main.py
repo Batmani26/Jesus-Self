@@ -80,9 +80,9 @@ async def inline_panel(query: InlineQuery):
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
             [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
-            [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")],
-            [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel")]
-        ])
+            [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
+            [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
+            ])
         result = InlineQueryResultArticle(
             id=hashlib.md5(text.encode()).hexdigest(),
             title="پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭",
@@ -180,7 +180,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "یکی از بازی‌های زیر را انتخاب کنید. (نتیجه کاملاً تصادفی است)\n"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🎲 تاس", callback_data="cheat_dice_info"), InlineKeyboardButton(text="🎯 دارت", callback_data="game_dart")],
+            [InlineKeyboardButton(text="🎲 تاس", callback_data="cat_dice_info"), InlineKeyboardButton(text="🎯 دارت", callback_data="game_dart")],
             [InlineKeyboardButton(text="🏀 بسکتبال", callback_data="game_basketball"), InlineKeyboardButton(text="🎳 بولینگ", callback_data="game_bowling")],
             [InlineKeyboardButton(text="🎰 کازینو", callback_data="game_casino")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
@@ -289,8 +289,8 @@ async def cb_back_to_panel(callback: CallbackQuery):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
         [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
-        [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")],
-        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel")]
+        [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
+        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
     ])
     try:
         if callback.message:
