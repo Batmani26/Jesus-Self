@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, Message, ForceReply, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram import F
-from bot.database import add_user, get_user, set_user_phone, save_session
+from bot.database import add_user, get_user, set_user_phone, save_session, get_yaqoot
 from bot.login import send_code, verify_code, verify_password
 
 BOT_TOKEN = "9117892584:AAHF4j8MgWhJdXCmXIGBQfJk2OMVnQjWNhs"
@@ -24,7 +24,7 @@ TEMP_CODES = {}
 
 MAIN_KEYBOARD = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="✨ ساخت سلف")],
+        [KeyboardButton(text="✨ ساخت سلف"), KeyboardButton(text="👤 حساب کاربری")],
         [KeyboardButton(text="📚 راهنما")]
     ],
     resize_keyboard=True
@@ -53,6 +53,19 @@ async def cmd_start(message: Message):
         await message.answer_photo(photo=photo_url, caption=caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
     except Exception:
         await message.answer(caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
+
+@dp.message(F.text == "👤 حساب کاربری")
+async def cb_account(message: Message):
+    user_id = message.from_user.id
+    balance = get_yaqoot(user_id)
+    
+    text = (
+        "👤 **حساب کاربری شما**\n\n"
+        f"🆔 **آیدی عددی:** `{user_id}`\n"
+        f"💎 **موجودی یاقوت:** `{balance}`\n\n"
+        "⚠️ **توجه:** هر ۱ ساعت، ۲ یاقوت بابت اجرای سلف‌بات مصرف می‌شود."
+    )
+    await message.answer(text, parse_mode="Markdown")
 
 @dp.message(F.text == "📚 راهنما")
 async def cb_help(message: Message):

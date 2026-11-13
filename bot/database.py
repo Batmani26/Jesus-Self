@@ -15,6 +15,7 @@ def init_db():
             phone_number TEXT,
             session_string TEXT,
             is_active INTEGER DEFAULT 0,
+            yaqoot_balance INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -44,6 +45,14 @@ def set_user_phone(user_id, phone):
     cursor.execute('UPDATE users SET phone_number = ? WHERE user_id = ?', (phone, user_id))
     conn.commit()
     conn.close()
+
+def get_yaqoot(user_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT yaqoot_balance FROM users WHERE user_id = ?', (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else 0
 
 def save_session(user_id, session_string):
     conn = sqlite3.connect(DB_PATH)
