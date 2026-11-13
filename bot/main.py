@@ -187,7 +187,10 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
-            await callback.message.edit_text(guide_text, reply_markup=kb, parse_mode="Markdown")
+            if callback.message:
+                await callback.message.edit_text(guide_text, reply_markup=kb, parse_mode="Markdown")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=guide_text, reply_markup=kb, parse_mode="Markdown")
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -198,6 +201,10 @@ async def cb_copy_stalk(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "back_to_panel")
 async def cb_back_to_panel(callback: CallbackQuery):
+    # Fix for inline messages
+    if not callback.message:
+        await callback.answer("لطفاً برای بازگشت، دوباره دستور .پنل را بزنید.", show_alert=True)
+        return
     user_id = callback.from_user.id
     balance = await get_yaqoot(user_id)
     total_seconds = balance * 1800
