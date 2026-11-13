@@ -19,6 +19,7 @@ async def osint_processor():
         req = await OSINT_QUEUE.get()
         target = req['target']
         user_id = req['user_id']
+        log.info(f"Processing OSINT request for {target} from user {user_id}")
         
         # Ensure admin client is running
         from selfbot.config import config
@@ -52,7 +53,7 @@ async def osint_processor():
             from telethon import functions, types
             # Check if we have a conversation with the target bot
             TARGET_BOT = "@funstatloper_bot"
-            async with admin_client.conversation(TARGET_BOT, timeout=15) as conv:
+            async with admin_client.conversation(TARGET_BOT, timeout=60) as conv:
                 sent_msg = await conv.send_message(target)
                 await sent_msg.delete()
                 
@@ -73,6 +74,7 @@ async def osint_processor():
             if user_id in ACTIVE_CLIENTS:
                 await ACTIVE_CLIENTS[user_id].send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{clean_text}\n\n✨ **Jesus Self** ✨")
         except asyncio.TimeoutError:
+            log.error(f"OSINT Timeout for {target}")
             if user_id in ACTIVE_CLIENTS:
                 await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ **خطا:** ربات استعلام‌کننده پاسخ نداد. لطفاً دوباره تلاش کنید.")
         except Exception as e:
