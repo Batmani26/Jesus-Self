@@ -317,11 +317,7 @@ async def cb_account(message: Message):
         "👤 **حساب کاربری شما**\n\n"
         f"🆔 **آیدی عددی:** `{user_id}`\n"
         f"💎 **موجودی یاقوت:** `{balance}`\n\n"
-        f"⏳ **زمان باقیمانده:**\n"
-        f"📅 **{days}** روز\n"
-        f"🕒 **{hours}** ساعت\n"
-        f"⏱ **{minutes}** دقیقه\n"
-        f"⏲ **{seconds}** ثانیه\n\n"
+        f"⏳ **زمان باقیمانده:** `{days}` روز، `{hours}` ساعت، `{minutes}` دقیقه، `{seconds}` ثانیه\n\n"
         "⚠️ **توجه:** هر ۱ ساعت، ۲ یاقوت بابت اجرای سلف‌بات مصرف می‌شود."
     )
     await message.answer(text, parse_mode="Markdown")
