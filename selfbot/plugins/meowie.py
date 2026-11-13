@@ -31,24 +31,29 @@ def register(client) -> None:
         # Spam the callback query
         for _ in range(50):
             try:
-                # We need the bot's peer
                 bot = await event.client.get_entity('@MeowieQVBot')
                 res = await client(functions.messages.GetBotCallbackAnswerRequest(
                     peer=bot,
                     msg_id=bot_msg.id,
                     data=data
                 ))
-                # Wait for the bot to reply with the dice
-                await asyncio.sleep(2)
-                # Get the latest messages
-                messages = await client.get_messages(event.chat_id, limit=5)
+                
+                # Check if the bot returned a game
+                if hasattr(res, 'game') and res.game:
+                    if hasattr(res.game, 'value') and res.game.value == 6:
+                        await event.delete()
+                        return
+                
+                # Wait for the bot to reply with the dice in the chat
+                await asyncio.sleep(1.5)
+                messages = await client.get_messages(event.chat_id, limit=3)
                 for msg in messages:
                     if msg.from_id == bot.id and msg.media:
-                        if isinstance(msg.media, InputMediaDice) and msg.media.value == 6:
+                        if hasattr(msg.media, 'value') and msg.media.value == 6:
                             await event.delete()
                             return
             except Exception as e:
                 print(f"Meowie error: {e}")
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
                 
         await event.edit("❌ متاسفانه موفق نشدیم.")
