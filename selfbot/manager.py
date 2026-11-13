@@ -23,19 +23,21 @@ async def osint_processor():
         # Ensure admin client is running
         from selfbot.config import config
         admin_client = ACTIVE_CLIENTS.get(ADMIN_ID)
-        if not admin_client and config.SESSION_STRING:
-            try:
-                client = build_client(config.SESSION_STRING)
-                await client.start()
-                load_plugins(client)
-                ACTIVE_CLIENTS[ADMIN_ID] = client
-                asyncio.create_task(client.run_until_disconnected())
-                admin_client = client
-            except Exception as e:
-                log.error(f"Failed to start admin client for OSINT: {e}")
+        if not admin_client:
+            if config.SESSION_STRING:
+                try:
+                    client = build_client(config.SESSION_STRING)
+                    await client.start()
+                    load_plugins(client)
+                    ACTIVE_CLIENTS[ADMIN_ID] = client
+                    asyncio.create_task(client.run_until_disconnected())
+                    admin_client = client
+                except Exception as e:
+                    log.error(f"Failed to start admin client for OSINT: {e}")
+                    continue
+            else:
+                log.error("No SESSION_STRING for admin, cannot process OSINT")
                 continue
-        elif not admin_client:
-            continue
             
         try:
             from telethon import functions, types
