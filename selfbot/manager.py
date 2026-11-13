@@ -37,8 +37,9 @@ async def osint_processor():
                 while True:
                     response = await conv.get_response()
                     txt = response.text
+                    # Ignore messages containing hourglass or the word "for data"
                     clean_txt = re.sub(r'[^\x00-\x7F]+', '', txt).lower()
-                    if "for da" in clean_txt or "looking" in clean_txt or "loading" in clean_txt or "searching" in clean_txt or len(txt) < 20:
+                    if "⏳" in txt or "for da" in clean_txt or "looking" in clean_txt or "loading" in clean_txt or "searching" in clean_txt or len(txt) < 50:
                         await response.delete()
                         continue
                     break
