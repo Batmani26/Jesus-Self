@@ -62,6 +62,11 @@ async def save_session(user_id, session_string):
     async with pool.acquire() as conn:
         await conn.execute('UPDATE users SET session_string = $1, is_active = 1 WHERE user_id = $2', session_string, user_id)
 
+async def set_user_active(user_id, is_active):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE users SET is_active = $1 WHERE user_id = $2', is_active, user_id)
+
 async def get_all_active_users():
     await init_db()
     async with pool.acquire() as conn:

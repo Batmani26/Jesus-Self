@@ -11,7 +11,7 @@ from datetime import datetime
 from persiantools.jdatetime import JalaliDateTime
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
 from aiogram import F
-from bot.database import add_user, get_user, set_user_phone, save_session, get_yaqoot, add_yaqoot, get_all_active_users, deduct_yaqoot, deactivate_user
+from bot.database import add_user, get_user, set_user_phone, save_session, get_yaqoot, add_yaqoot, get_all_active_users, deduct_yaqoot, deactivate_user, set_user_active
 from bot.login import send_code, verify_code, verify_password
 
 BOT_TOKEN = "9117892584:AAHF4j8MgWhJdXCmXIGBQfJk2OMVnQjWNhs"
@@ -32,6 +32,7 @@ ACTIVE_PANELS = {} # {(chat_id, message_id): user_id}
 MAIN_KEYBOARD = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="✨ ساخت سلف"), KeyboardButton(text="👤 حساب کاربری")],
+        [KeyboardButton(text="⚙️ مدیریت سلف")],
         [KeyboardButton(text="📚 راهنما")]
     ],
     resize_keyboard=True
@@ -92,7 +93,12 @@ async def track_inline_panel(message: Message):
 
 async def panel_updater_loop():
     while True:
-        await asyncio.sleep(1)
+        try:
+            await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"Panel updater error: {e}")
         now_utc = datetime.now(pytz.utc)
         now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
         time_str = now_tehran.strftime("%H:%M:%S")
@@ -112,7 +118,7 @@ async def panel_updater_loop():
                     f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
                     "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
                 )
-                await bot.edit_message_text(chat_id=chat_id, message_id=msg_id, text=text, parse_mode="Markdown")
+                await bot.edit_message_text(chat_id=chat_id, message_id=msg_id, text=text)
             except Exception as e:
                 if "message is not modified" not in str(e).lower():
                     del ACTIVE_PANELS[(chat_id, msg_id)]
@@ -224,6 +230,73 @@ async def cmd_charge(message: Message):
         await bot.send_message(target_id, msg, parse_mode="Markdown")
     except Exception:
         pass
+
+@dp.message(F.text == "⚙️ مدیریت سلف")
+async def cb_manage_self(message: Message):
+    user_id = message.from_user.id
+    user = await get_user(user_id)
+    balance = await get_yaqoot(user_id)
+    is_active = user['is_active'] if user else 0
+    status_text = "✅ سلف شما روشن است" if is_active else "❌ سلف شما خاموش است"
+    
+    hours = balance // 2
+    days = hours // 24
+    
+    text = (
+        f"⚙️ **مدیریت سلف**\n\n"
+        f"📊 **وضعیت:** {status_text}\n"
+        f"💎 **موجودی یاقوت:** `{balance}`\n"
+        f"⏳ **زمان باقیمانده:** `{hours}` ساعت (`{days}` روز)\n\n"
+        "⚠️ **توجه:** هزینه هر بار روشن کردن سلف، **۱۰ یاقوت** است."
+    )
+    
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ روشن کردن", callback_data="toggle_on"), InlineKeyboardButton(text="❌ خاموش کردن", callback_data="toggle_off")],
+        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_manage")]
+    ])
+    await message.answer(text, reply_markup=kb, parse_mode="Markdown")
+
+@dp.callback_query(F.data == "toggle_on")
+async def cb_toggle_on(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    balance = await get_yaqoot(user_id)
+    if balance < 10:
+        await callback.answer("❌ موجودی یاقوت شما کمتر از ۱۰ است!", show_alert=True)
+        return
+    await deduct_yaqoot(user_id, 10)
+    await set_user_active(user_id, 1)
+    await callback.answer("✅ سلف شما با موفقیت روشن شد!", show_alert=True)
+    await callback.message.edit_text("✅ **سلف شما با موفقیت روشن شد.**\n\nبرای مشاهده وضعیت جدید، دکمه بروزرسانی را بزنید.", parse_mode="Markdown")
+
+@dp.callback_query(F.data == "toggle_off")
+async def cb_toggle_off(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    await set_user_active(user_id, 0)
+    await callback.answer("❌ سلف شما خاموش شد.", show_alert=True)
+    await callback.message.edit_text("❌ **سلف شما خاموش شد.**\n\nبرای روشن کردن مجدد، دکمه بروزرسانی را بزنید.", parse_mode="Markdown")
+
+@dp.callback_query(F.data == "refresh_manage")
+async def cb_refresh_manage(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    user = await get_user(user_id)
+    balance = await get_yaqoot(user_id)
+    is_active = user['is_active'] if user else 0
+    status_text = "✅ سلف شما روشن است" if is_active else "❌ سلف شما خاموش است"
+    hours = balance // 2
+    days = hours // 24
+    text = (
+        f"⚙️ **مدیریت سلف**\n\n"
+        f"📊 **وضعیت:** {status_text}\n"
+        f"💎 **موجودی یاقوت:** `{balance}`\n"
+        f"⏳ **زمان باقیمانده:** `{hours}` ساعت (`{days}` روز)\n\n"
+        "⚠️ **توجه:** هزینه هر بار روشن کردن سلف، **۱۰ یاقوت** است."
+    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ روشن کردن", callback_data="toggle_on"), InlineKeyboardButton(text="❌ خاموش کردن", callback_data="toggle_off")],
+        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_manage")]
+    ])
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+    await callback.answer("✅ بروزرسانی شد!")
 
 @dp.message(F.text == "👤 حساب کاربری")
 async def cb_account(message: Message):
