@@ -39,30 +39,9 @@ def register(client) -> None:
             
             try:
                 # ارسال به ربات هدف
-                async with client.conversation(TARGET_BOT, timeout=30) as conv:
-                    sent_msg = await conv.send_message(f"{target}")
-                    await sent_msg.delete() # Delete the sent message immediately
-                    
-                    # Wait for the final response (skip loading messages)
-                    import re
-                    while True:
-                        response = await conv.get_response()
-                        txt = response.text
-                        # Remove zero-width non-joiners and non-ASCII characters to check the base words
-                        clean_txt = re.sub(r'[^\x00-\x7F]+', '', txt).lower()
-                        if "for da" in clean_txt or "looking" in clean_txt or "loading" in clean_txt or "searching" in clean_txt or len(txt) < 20:
-                            await response.delete()
-                            continue
-                        break
-                    await response.delete()
-                    response_text = response.text
-                    
-                # Remove the source link
-                clean_text = response_text.split("Sτiсқеrs℮tѕ:")[0].strip()
-                
-                # ارسال پاسخ به سیو مسیج
-                await client.send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{clean_text}\n\n✨ **Jesus Self** ✨")
-                await event.delete()
+                from selfbot.manager import OSINT_QUEUE
+                await OSINT_QUEUE.put({"target": target, "user_id": me.id})
+                await event.edit("⏳ درخواست شما در صف بررسی قرار گرفت. نتیجه به زودی در سیو مسیج ارسال می‌شود.")
             except asyncio.TimeoutError:
                 await event.edit("❌ ربات امنیتی پاسخی نداد (Timeout).")
             except Exception as e:

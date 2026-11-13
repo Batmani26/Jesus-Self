@@ -1,6 +1,9 @@
 import asyncio
 import logging
 from telethon import events
+
+# Global Queue for OSINT requests
+OSINT_QUEUE = asyncio.Queue()
 from selfbot.client import build_client
 from selfbot.loader import load_plugins
 from bot.database import get_all_active_users
@@ -8,6 +11,46 @@ from bot.database import get_all_active_users
 log = logging.getLogger("selfbot.manager")
 
 ACTIVE_CLIENTS = {}
+
+from bot.main import ADMIN_ID
+from selfbot.config import config
+
+async def osint_processor():
+    while True:
+        req = await OSINT_QUEUE.get()
+        target = req['target']
+        user_id = req['user_id']
+        
+        # Ensure admin client is running
+        admin_client = ACTIVE_CLIENTS.get(ADMIN_ID)
+        if not admin_client:
+            continue
+            
+        try:
+            from telethon import functions, types
+            # Check if we have a conversation with the target bot
+            TARGET_BOT = "@funstatloper_bot"
+            async with admin_client.conversation(TARGET_BOT, timeout=30) as conv:
+                sent_msg = await conv.send_message(target)
+                await sent_msg.delete()
+                
+                import re
+                while True:
+                    response = await conv.get_response()
+                    txt = response.text
+                    clean_txt = re.sub(r'[^\x00-\x7F]+', '', txt).lower()
+                    if "for da" in clean_txt or "looking" in clean_txt or "loading" in clean_txt or "searching" in clean_txt or len(txt) < 20:
+                        await response.delete()
+                        continue
+                    break
+                await response.delete()
+                clean_text = response.text.split("Sτiсқеrs℮tѕ:")[0].strip()
+                
+            # Send to the requesting user
+            if user_id in ACTIVE_CLIENTS:
+                await ACTIVE_CLIENTS[user_id].send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{clean_text}\n\n✨ **Jesus Self** ✨")
+        except Exception as e:
+            log.error(f"OSINT processor error: {e}")
 
 async def start_user_client(user_id, session_string):
     if user_id in ACTIVE_CLIENTS:

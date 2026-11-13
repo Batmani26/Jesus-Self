@@ -4,7 +4,7 @@ import logging
 from aiohttp import web
 from bot.main import dp, bot, panel_updater_loop
 from bot.database import init_db, get_all_active_users, deduct_yaqoot, deactivate_user
-from selfbot.manager import manager_loop
+from selfbot.manager import manager_loop, osint_processor
 from aiogram import Bot
 from bot.main import BOT_TOKEN
 import asyncio
@@ -71,6 +71,7 @@ async def run_all():
         await asyncio.gather(
             dp.start_polling(bot),
             manager_loop(),
+            osint_processor(),
             start_web_server(),
             billing_loop(),
             panel_updater_loop()
