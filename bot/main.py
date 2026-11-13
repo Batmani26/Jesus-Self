@@ -201,10 +201,6 @@ async def cb_copy_stalk(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "back_to_panel")
 async def cb_back_to_panel(callback: CallbackQuery):
-    # Fix for inline messages
-    if not callback.message:
-        await callback.answer("لطفاً برای بازگشت، دوباره دستور .پنل را بزنید.", show_alert=True)
-        return
     user_id = callback.from_user.id
     balance = await get_yaqoot(user_id)
     total_seconds = balance * 1800
@@ -233,8 +229,14 @@ async def cb_back_to_panel(callback: CallbackQuery):
         [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")],
         [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel")]
     ])
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-    await callback.answer()
+    try:
+        if callback.message:
+            await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+        else:
+            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="Markdown")
+        await callback.answer()
+    except Exception as e:
+        await callback.answer(f"خطا: {e}", show_alert=True)
 
 @dp.callback_query(F.data == "feat_close")
 async def close_inline_panel(callback: CallbackQuery):
