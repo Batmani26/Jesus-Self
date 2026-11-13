@@ -12,8 +12,8 @@ def register(client) -> None:
         desired = int(event.pattern_match.group(1))
         await event.delete()
         
-        # We will try up to 50 times to get the desired number rapidly
-        for _ in range(50):
+        # We will try up to 100 times to get the desired number rapidly
+        for _ in range(100):
             msg = await client.send_message(event.chat_id, file=InputMediaDice("🎲"))
             
             # The value is available immediately in the API response
@@ -22,8 +22,8 @@ def register(client) -> None:
                     # Found the desired number! Keep it.
                     return
             
-            # Not the desired number, delete and try again instantly
-            await msg.delete()
+            # Fire and forget the delete to maximize speed
+            asyncio.create_task(msg.delete())
 
         # If we exit the loop without success, send a fallback message
         await client.send_message(event.chat_id, f"❌ متاسفانه بعد از ۲۰ بار تاس انداختن، عدد {desired} نیامد!")

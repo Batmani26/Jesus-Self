@@ -180,7 +180,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "یکی از بازی‌های زیر را انتخاب کنید. (نتیجه کاملاً تصادفی است)\n"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🎲 تاس", callback_data="game_dice"), InlineKeyboardButton(text="🎯 دارت", callback_data="game_dart")],
+            [InlineKeyboardButton(text="🎲 تاس", callback_data="cheat_dice_info"), InlineKeyboardButton(text="🎯 دارت", callback_data="game_dart")],
             [InlineKeyboardButton(text="🏀 بسکتبال", callback_data="game_basketball"), InlineKeyboardButton(text="🎳 بولینگ", callback_data="game_bowling")],
             [InlineKeyboardButton(text="🎰 کازینو", callback_data="game_casino")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
@@ -190,6 +190,31 @@ async def process_inline_panel_callback(callback: CallbackQuery):
                 await callback.message.edit_text(cheat_text, reply_markup=kb, parse_mode="HTML")
             else:
                 await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=cheat_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+
+    elif cat == "dice_info":
+        info_text = (
+            "🎲 <b>بخش تقلب تاس</b>\n\n"
+            "<blockquote>با استفاده از دستورات زیر می‌توانید تاس تلگرام را مجبور کنید روی عدد دلخواه شما بایستد. کافیست دستور را در هر چتی ارسال کنید.</blockquote>\n\n"
+            "<b>دستورات:</b>\n"
+            "<code>.تاس 1</code>\n"
+            "<code>.تاس 2</code>\n"
+            "<code>.تاس 3</code>\n"
+            "<code>.تاس 4</code>\n"
+            "<code>.تاس 5</code>\n"
+            "<code>.تاس 6</code>\n\n"
+            "👇 برای کپی، روی هر دستور کلیک کنید."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_cheat")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
