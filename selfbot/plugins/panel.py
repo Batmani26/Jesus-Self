@@ -19,11 +19,10 @@ def register(client) -> None:
             [Button.inline("❌ بستن پنل", data=b"feat_close")]
         ]
         text = (
-            "🤖 <b>پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭</b>\n\n"
+            "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
             "از منوی زیر یک قابلیت را انتخاب کنید:"
         )
-        await event.reply(text, buttons=buttons)
-        await event.delete()
+        await event.edit(text, buttons=buttons, parse_mode="md")
 
     @client.on(events.CallbackQuery())
     async def panel_callback(event: events.CallbackQuery.Event) -> None:
