@@ -527,7 +527,7 @@ async def process_otp_click(callback: CallbackQuery):
     action = callback.data.split("_")[1]
     
     if USER_STATES.get(user_id) != "WAITING_CODE":
-        await callback.answer("زمان این مرحله گذشته است.")
+        await callback.answer("زمان این مرحله گذشته است. لطفاً دوباره از منوی «ساخت سلف» شروع کنید.", show_alert=True)
         return
         
     code = TEMP_CODES.get(user_id, "")
