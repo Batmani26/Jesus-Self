@@ -177,9 +177,9 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         await callback.answer("🎭 بخش تقلب (به‌زودی)", show_alert=True)
     elif cat == "security":
         guide_text = (
-            "🛡 **بخش استاک و امنیت**\n\n"
-            "سلف ما قابلیتی برای کاربران هموار ساخته که با استفاده از آیدی عددی و یا یوزرنیم شخص، اطلاعاتی از اکانت مورد نظر را به شما نشان دهد.\n\n"
-            "جهت استفاده از این قابلیت، شما با ارسال `.استاک` یک پیامی در سیو مسیج خود دریافت می‌کنید که منتظر دریافت آیدی عددی و یا یوزرنیم از طرف شما است و شما با ارسال آن، اطلاعاتی را در همان سیو مسیج دریافت می‌کنید.\n\n"
+            "🛡 <b>بخش استاک و امنیت</b>\n\n"
+            "<blockquote>سلف ما قابلیتی برای کاربران هموار ساخته که با استفاده از آیدی عددی و یا یوزرنیم شخص، اطلاعاتی از اکانت مورد نظر را به شما نشان دهد.</blockquote>\n\n"
+            "<blockquote>جهت استفاده از این قابلیت، شما با ارسال .استاک یک پیامی در سیو مسیج خود دریافت می‌کنید که منتظر دریافت آیدی عددی و یا یوزرنیم از طرف شما است و شما با ارسال آن، اطلاعاتی را در همان سیو مسیج دریافت می‌کنید.</blockquote>\n\n"
             "👇 برای کپی کردن دستور، روی آن کلیک کنید:"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -188,9 +188,9 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         ])
         try:
             if callback.message:
-                await callback.message.edit_text(guide_text, reply_markup=kb, parse_mode="Markdown")
+                await callback.message.edit_text(guide_text, reply_markup=kb, parse_mode="HTML")
             else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=guide_text, reply_markup=kb, parse_mode="Markdown")
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=guide_text, reply_markup=kb, parse_mode="HTML")
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
