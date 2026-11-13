@@ -49,38 +49,38 @@ async def osint_processor():
                     await ACTIVE_CLIENTS[user_id].send_message("me", "❌ خطا: SESSION_STRING ادمین تنظیم نشده است.")
                 continue
             
-        try:
-            from telethon import functions, types
-            # Check if we have a conversation with the target bot
-            TARGET_BOT = "@funstatloper_bot"
-            async with admin_client.conversation(TARGET_BOT, timeout=60) as conv:
-                sent_msg = await conv.send_message(target)
-                await sent_msg.delete()
-                
-                import re
-                while True:
-                    response = await conv.get_response()
-                    txt = response.text
-                    # Ignore messages containing hourglass or the word "for data"
-                    clean_txt = re.sub(r'[^\x00-\x7F]+', '', txt).lower()
-                    if "⏳" in txt or "for da" in clean_txt or "looking" in clean_txt or "loading" in clean_txt or "searching" in clean_txt or len(txt) < 50:
-                        await response.delete()
-                        continue
+        success = False
+        clean_text = ""
+        for attempt in range(3):
+            try:
+                # Check if we have a conversation with the target bot
+                TARGET_BOT = "@funstatloper_bot"
+                async with admin_client.conversation(TARGET_BOT, timeout=20) as conv:
+                    sent_msg = await conv.send_message(target)
+                    await sent_msg.delete()
+                    
+                    import re
+                    while True:
+                        response = await conv.get_response()
+                        txt = response.text
+                        clean_txt = re.sub(r'[^\x00-\x7F]+', '', txt).lower()
+                        if "⏳" in txt or "for da" in clean_txt or "looking" in clean_txt or "loading" in clean_txt or "searching" in clean_txt or len(txt) < 50:
+                            await response.delete()
+                            continue
+                        break
+                    await response.delete()
+                    clean_text = response.text.split("Sτiсқеrs℮tѕ:")[0].strip()
+                    success = True
                     break
-                await response.delete()
-                clean_text = response.text.split("Sτiсқеrs℮tѕ:")[0].strip()
-                
-            # Send to the requesting user
-            if user_id in ACTIVE_CLIENTS:
+            except Exception as e:
+                log.error(f"OSINT attempt {attempt+1} failed: {e}")
+                await asyncio.sleep(1)
+
+        if user_id in ACTIVE_CLIENTS:
+            if success and clean_text:
                 await ACTIVE_CLIENTS[user_id].send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{clean_text}\n\n✨ **Jesus Self** ✨")
-        except asyncio.TimeoutError:
-            log.error(f"OSINT Timeout for {target}")
-            if user_id in ACTIVE_CLIENTS:
-                await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ **خطا:** ربات استعلام‌کننده پاسخ نداد. لطفاً دوباره تلاش کنید.")
-        except Exception as e:
-            log.error(f"OSINT processor error: {e}")
-            if user_id in ACTIVE_CLIENTS:
-                await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ **خطا در استعلام:**\n`{e}`")
+            else:
+                await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ **متاسفانه موفق به دریافت اطلاعات برای `{target}` نشدیم.**\n\nلطفاً دوباره تلاش کنید.")
 
 async def start_user_client(user_id, session_string):
     if user_id in ACTIVE_CLIENTS:
