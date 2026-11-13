@@ -176,7 +176,34 @@ async def refresh_inline_panel(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("cat_"))
 async def process_inline_panel_callback(callback: CallbackQuery):
-    cat = callback.data.split("_")[1]
+    data_str = callback.data
+    if data_str == "cat_dice_info":
+        info_text = (
+            "🎲 <b>بخش تقلب تاس</b>\n\n"
+            "<blockquote>با استفاده از دستورات زیر می‌توانید تاس تلگرام را مجبور کنید روی عدد دلخواه شما بایستد. کافیست دستور را در هر چتی ارسال کنید.</blockquote>\n\n"
+            "<b>دستورات:</b>\n"
+            "<code>.تاس 1</code>\n"
+            "<code>.تاس 2</code>\n"
+            "<code>.تاس 3</code>\n"
+            "<code>.تاس 4</code>\n"
+            "<code>.تاس 5</code>\n"
+            "<code>.تاس 6</code>\n\n"
+            "👇 برای کپی، روی هر دستور کلیک کنید."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_cheat")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    cat = data_str.split("_")[1]
     if cat == "games":
         await callback.answer("🎮 بخش بازی‌ها (به‌زودی)", show_alert=True)
     elif cat == "tools":
@@ -203,30 +230,6 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
 
-    elif cat == "dice_info":
-        info_text = (
-            "🎲 <b>بخش تقلب تاس</b>\n\n"
-            "<blockquote>با استفاده از دستورات زیر می‌توانید تاس تلگرام را مجبور کنید روی عدد دلخواه شما بایستد. کافیست دستور را در هر چتی ارسال کنید.</blockquote>\n\n"
-            "<b>دستورات:</b>\n"
-            "<code>.تاس 1</code>\n"
-            "<code>.تاس 2</code>\n"
-            "<code>.تاس 3</code>\n"
-            "<code>.تاس 4</code>\n"
-            "<code>.تاس 5</code>\n"
-            "<code>.تاس 6</code>\n\n"
-            "👇 برای کپی، روی هر دستور کلیک کنید."
-        )
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_cheat")]
-        ])
-        try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
-            await callback.answer()
-        except Exception as e:
-            await callback.answer(f"خطا: {e}", show_alert=True)
     elif cat == "security":
         guide_text = (
             "🛡 <b>بخش استاک و امنیت</b>\n\n"
