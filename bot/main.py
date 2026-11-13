@@ -280,7 +280,8 @@ async def cb_toggle_on(callback: CallbackQuery):
         await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
         await callback.answer("✅ سلف شما با موفقیت روشن شد!", show_alert=True)
     except Exception as e:
-        await callback.answer(f"خطا: {e}", show_alert=True)
+        await callback.answer(f"خطا در روشن کردن: {e}", show_alert=True)
+        await callback.message.answer(f"خطای دقیق: `{e}`", parse_mode="Markdown")
 
 @dp.callback_query(F.data == "toggle_off")
 async def cb_toggle_off(callback: CallbackQuery):
@@ -291,7 +292,8 @@ async def cb_toggle_off(callback: CallbackQuery):
         await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
         await callback.answer("❌ سلف شما با موفقیت خاموش شد!", show_alert=True)
     except Exception as e:
-        await callback.answer(f"خطا: {e}", show_alert=True)
+        await callback.answer(f"خطا در خاموش کردن: {e}", show_alert=True)
+        await callback.message.answer(f"خطای دقیق: `{e}`", parse_mode="Markdown")
 
 @dp.callback_query(F.data == "refresh_manage")
 async def cb_refresh_manage(callback: CallbackQuery):

@@ -20,7 +20,7 @@ async def init_db():
                     session_string TEXT,
                     is_active INTEGER DEFAULT 0,
                     yaqoot_balance INTEGER DEFAULT 0,
-                    last_deduction TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_deduction TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
