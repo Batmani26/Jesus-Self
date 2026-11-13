@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, Message, ForceReply, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram import F
-from bot.database import add_user, get_user, set_user_phone, save_session, get_yaqoot
+from bot.database import add_user, get_user, set_user_phone, save_session, get_yaqoot, add_yaqoot
 from bot.login import send_code, verify_code, verify_password
 
 BOT_TOKEN = "9117892584:AAHF4j8MgWhJdXCmXIGBQfJk2OMVnQjWNhs"
@@ -53,6 +53,31 @@ async def cmd_start(message: Message):
         await message.answer_photo(photo=photo_url, caption=caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
     except Exception:
         await message.answer(caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
+
+@dp.message(Command("charge"))
+async def cmd_charge(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⛔ شما دسترسی به این دستور را ندارید.")
+        return
+    
+    args = message.text.split()
+    if len(args) != 3:
+        await message.answer("⚠️ فرمت صحیح:\n`/charge <user_id> <amount>`\nمثال: `/charge 123456789 50`", parse_mode="Markdown")
+        return
+        
+    try:
+        target_id = int(args[1])
+        amount = int(args[2])
+    except ValueError:
+        await message.answer("⚠️ آیدی و مقدار باید عدد باشند.")
+        return
+        
+    add_yaqoot(target_id, amount)
+    await message.answer(f"✅ **{amount}** یاقوت به کاربر `{target_id}` اضافه شد.", parse_mode="Markdown")
+    try:
+        await bot.send_message(target_id, f"🎉 **{amount}** یاقوت به حساب شما اضافه شد!")
+    except Exception:
+        pass
 
 @dp.message(F.text == "👤 حساب کاربری")
 async def cb_account(message: Message):

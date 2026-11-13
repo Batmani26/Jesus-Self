@@ -54,6 +54,16 @@ def get_yaqoot(user_id):
     conn.close()
     return row[0] if row else 0
 
+def add_yaqoot(user_id, amount):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE users SET yaqoot_balance = yaqoot_balance + ? WHERE user_id = ?', (amount, user_id))
+    if cursor.rowcount == 0:
+        # اگه کاربر وجود نداشت، با موجودی اولیه اضافه کن
+        cursor.execute('INSERT INTO users (user_id, yaqoot_balance) VALUES (?, ?)', (user_id, amount))
+    conn.commit()
+    conn.close()
+
 def save_session(user_id, session_string):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
