@@ -52,7 +52,10 @@ BACK_KEYBOARD = ReplyKeyboardMarkup(
 async def inline_panel(query: InlineQuery):
     if query.query == "panel" or query.query == "پنل":
         user_id = query.from_user.id
-        balance = await get_yaqoot(user_id)
+        try:
+            balance = await asyncio.wait_for(get_yaqoot(user_id), timeout=1.0)
+        except asyncio.TimeoutError:
+            balance = 0
         total_seconds = balance * 1800
         days = total_seconds // 86400
         hours = (total_seconds % 86400) // 3600
