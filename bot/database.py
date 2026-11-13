@@ -20,6 +20,7 @@ async def init_db():
                     session_string TEXT,
                     is_active INTEGER DEFAULT 0,
                     yaqoot_balance INTEGER DEFAULT 0,
+                    last_deduction TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
@@ -75,7 +76,7 @@ async def get_all_active_users():
 async def deduct_yaqoot(user_id, amount):
     await init_db()
     async with pool.acquire() as conn:
-        await conn.execute('UPDATE users SET yaqoot_balance = yaqoot_balance - $1 WHERE user_id = $2', amount, user_id)
+        await conn.execute('UPDATE users SET yaqoot_balance = yaqoot_balance - $1, last_deduction = CURRENT_TIMESTAMP WHERE user_id = $2', amount, user_id)
 
 async def deactivate_user(user_id):
     await init_db()

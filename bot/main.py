@@ -48,8 +48,11 @@ async def inline_panel(query: InlineQuery):
     if query.query == "panel" or query.query == "پنل":
         user_id = query.from_user.id
         balance = await get_yaqoot(user_id)
-        hours = balance // 2
-        days = hours // 24
+        total_seconds = balance * 1800
+        days = total_seconds // 86400
+        hours = (total_seconds % 86400) // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
         
         now_utc = datetime.now(pytz.utc)
         now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
@@ -60,7 +63,7 @@ async def inline_panel(query: InlineQuery):
         text = (
             "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
             f"💎 موجودی: **{balance}** یاقوت\n"
-            f"⏳ معادل: **{hours}** ساعت ({days} روز)\n"
+            f"⏳ معادل: **{days}** روز، **{hours}** ساعت، **{minutes}** دقیقه، **{seconds}** ثانیه\n"
             f"⏰ ساعت: `{time_str}`\n"
             f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
             "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
@@ -127,8 +130,11 @@ async def panel_updater_loop():
 async def refresh_inline_panel(callback: CallbackQuery):
     user_id = callback.from_user.id
     balance = await get_yaqoot(user_id)
-    hours = balance // 2
-    days = hours // 24
+    total_seconds = balance * 1800
+    days = total_seconds // 86400
+    hours = (total_seconds % 86400) // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
     
     now_utc = datetime.now(pytz.utc)
     now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
@@ -139,7 +145,7 @@ async def refresh_inline_panel(callback: CallbackQuery):
     text = (
         "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
         f"💎 موجودی: **{balance}** یاقوت\n"
-        f"⏳ معادل: **{hours}** ساعت ({days} روز)\n"
+        f"⏳ معادل: **{days}** روز، **{hours}** ساعت، **{minutes}** دقیقه، **{seconds}** ثانیه\n"
         f"⏰ ساعت: `{time_str}`\n"
         f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
         "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
@@ -234,26 +240,7 @@ async def cmd_charge(message: Message):
 @dp.message(F.text == "⚙️ مدیریت سلف")
 async def cb_manage_self(message: Message):
     user_id = message.from_user.id
-    user = await get_user(user_id)
-    balance = await get_yaqoot(user_id)
-    is_active = user['is_active'] if user else 0
-    status_text = "✅ سلف شما روشن است" if is_active else "❌ سلف شما خاموش است"
-    
-    hours = balance // 2
-    days = hours // 24
-    
-    text = (
-        f"⚙️ **مدیریت سلف**\n\n"
-        f"📊 **وضعیت:** {status_text}\n"
-        f"💎 **موجودی یاقوت:** `{balance}`\n"
-        f"⏳ **زمان باقیمانده:** `{hours}` ساعت (`{days}` روز)\n\n"
-        "⚠️ **توجه:** هزینه هر بار روشن کردن سلف، **۱۰ یاقوت** است."
-    )
-    
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ روشن کردن", callback_data="toggle_on"), InlineKeyboardButton(text="❌ خاموش کردن", callback_data="toggle_off")],
-        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_manage")]
-    ])
+    text, kb = await build_manage_text(user_id)
     await message.answer(text, reply_markup=kb, parse_mode="Markdown")
 
 async def build_manage_text(user_id):
