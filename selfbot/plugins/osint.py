@@ -45,7 +45,8 @@ def register(client) -> None:
                     # Wait for the final response (skip loading messages)
                     while True:
                         response = await conv.get_response()
-                        if "Looking for data" in response.text or "Lοокinց" in response.text or "Loading" in response.text:
+                        txt = response.text.lower()
+                        if "for da" in txt or "looking" in txt or "loading" in txt or " searching" in txt:
                             continue
                         break
                     
