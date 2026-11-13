@@ -485,8 +485,7 @@ async def cmd_charge(message: Message):
 async def cb_manage_self(message: Message):
     user_id = message.from_user.id
     text, kb = await build_manage_text(user_id)
-    await message.answer(text, reply_markup=BACK_KEYBOARD, parse_mode="HTML")
-    await message.answer("👇 برای مدیریت از دکمه‌های شیشه‌ای بالا استفاده کنید.", reply_markup=kb)
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 async def build_manage_text(user_id):
     user = await get_user(user_id)
@@ -507,7 +506,7 @@ async def build_manage_text(user_id):
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ روشن کردن", callback_data="toggle_on"), InlineKeyboardButton(text="❌ خاموش کردن", callback_data="toggle_off")],
-        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_manage")]
+        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_manage"), InlineKeyboardButton(text="🔙 بازگشت", callback_data="back_to_main")]
     ])
     return text, kb
 
@@ -566,6 +565,16 @@ async def cb_account(message: Message):
         "⚠️ **توجه:** هر ۱ ساعت، ۲ یاقوت بابت اجرای سلف‌بات مصرف می‌شود."
     )
     await message.answer(text, reply_markup=BACK_KEYBOARD, parse_mode="Markdown")
+
+@dp.callback_query(F.data == "back_to_main")
+async def cb_back_to_main_inline(callback: CallbackQuery):
+    try:
+        await callback.message.delete()
+        text = "🏠 **منوی اصلی**\n\nاز دکمه‌های زیر استفاده کنید:"
+        await callback.message.answer(text, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
+        await callback.answer()
+    except Exception as e:
+        await callback.answer(f"خطا: {e}", show_alert=True)
 
 @dp.message(F.text == "🔙 بازگشت به منوی اصلی")
 async def cb_back_to_main_keyboard(message: Message):
