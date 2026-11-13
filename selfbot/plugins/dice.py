@@ -12,21 +12,18 @@ def register(client) -> None:
         desired = int(event.pattern_match.group(1))
         await event.delete()
         
-        # We will try up to 20 times to get the desired number
-        for _ in range(20):
+        # We will try up to 50 times to get the desired number rapidly
+        for _ in range(50):
             msg = await client.send_message(event.chat_id, file=InputMediaDice("🎲"))
-            await asyncio.sleep(2.5) # Wait for the dice animation to finish
             
-            # We need to fetch the message again to get the result
-            msg = await client.get_messages(event.chat_id, ids=msg.id)
+            # The value is available immediately in the API response
             if msg and msg.media and hasattr(msg.media, 'value'):
                 if msg.media.value == desired:
                     # Found the desired number! Keep it.
                     return
             
-            # Not the desired number, delete and try again
+            # Not the desired number, delete and try again instantly
             await msg.delete()
-            await asyncio.sleep(0.1) # Small delay before throwing again
 
         # If we exit the loop without success, send a fallback message
         await client.send_message(event.chat_id, f"❌ متاسفانه بعد از ۲۰ بار تاس انداختن، عدد {desired} نیامد!")
