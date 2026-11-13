@@ -61,3 +61,18 @@ async def save_session(user_id, session_string):
     await init_db()
     async with pool.acquire() as conn:
         await conn.execute('UPDATE users SET session_string = $1, is_active = 1 WHERE user_id = $2', session_string, user_id)
+
+async def get_all_active_users():
+    await init_db()
+    async with pool.acquire() as conn:
+        return await conn.fetch('SELECT * FROM users WHERE is_active = 1')
+
+async def deduct_yaqoot(user_id, amount):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE users SET yaqoot_balance = yaqoot_balance - $1 WHERE user_id = $2', amount, user_id)
+
+async def deactivate_user(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE users SET is_active = 0 WHERE user_id = $1', user_id)

@@ -3,8 +3,36 @@ import asyncio
 import logging
 from aiohttp import web
 from bot.main import dp, bot
-from bot.database import init_db
+from bot.database import init_db, get_all_active_users, deduct_yaqoot, deactivate_user
 from main import run as selfbot_run
+from aiogram import Bot
+from bot.main import BOT_TOKEN
+import asyncio
+
+async def billing_loop():
+    while True:
+        await asyncio.sleep(3600) # 1 hour
+        users = await get_all_active_users()
+        for u in users:
+            uid = u['user_id']
+            bal = u['yaqoot_balance']
+            new_bal = bal - 2
+            if new_bal <= 0:
+                await deduct_yaqoot(uid, bal)
+                await deactivate_user(uid)
+                try:
+                    b = Bot(token=BOT_TOKEN)
+                    await b.send_message(uid, "❌ **موجودی یاقوت شما به پایان رسید.**\n\nسلف‌بات شما غیرفعال شد. لطفاً حساب خود را شارژ کنید.", parse_mode="Markdown")
+                    await b.session.close()
+                except: pass
+            else:
+                await deduct_yaqoot(uid, 2)
+                if new_bal < 48:
+                    try:
+                        b = Bot(token=BOT_TOKEN)
+                        await b.send_message(uid, f"⚠️ **هشدار موجودی**\n\nموجودی یاقوت شما به **{new_bal}** رسیده است.\nکمتر از ۲۴ ساعت تا پایان موجودی شما باقی مانده است. لطفاً شارژ کنید.", parse_mode="Markdown")
+                        await b.session.close()
+                    except: pass
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s")
 log = logging.getLogger("start_all")
@@ -28,7 +56,8 @@ async def run_all():
         await asyncio.gather(
             dp.start_polling(bot),
             selfbot_run(),
-            start_web_server()
+            start_web_server(),
+            billing_loop()
         )
     except Exception as e:
         log.error(f"Crash in run_all: {e}", exc_info=True)

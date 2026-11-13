@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, Message, ForceReply, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram import F
-from bot.database import add_user, get_user, set_user_phone, save_session, get_yaqoot, add_yaqoot
+from bot.database import add_user, get_user, set_user_phone, save_session, get_yaqoot, add_yaqoot, get_all_active_users, deduct_yaqoot, deactivate_user
 from bot.login import send_code, verify_code, verify_password
 
 BOT_TOKEN = "9117892584:AAHF4j8MgWhJdXCmXIGBQfJk2OMVnQjWNhs"
@@ -53,6 +53,19 @@ async def cmd_start(message: Message):
         await message.answer_photo(photo=photo_url, caption=caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
     except Exception:
         await message.answer(caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
+
+@dp.message(Command("users"))
+async def cmd_users(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    users = await get_all_active_users()
+    if not users:
+        await message.answer("هیچ کاربر فعالی یافت نشد.")
+        return
+    text = "👥 **کاربران لاگین شده:**\n\n"
+    for u in users:
+        text += f"👤 {u['first_name']} | 🆔 `{u['user_id']}`\n📱 {u['phone_number']} | 💎 {u['yaqoot_balance']}\n➖➖➖➖➖\n"
+    await message.answer(text, parse_mode="Markdown")
 
 @dp.message(Command("charge"))
 async def cmd_charge(message: Message):
