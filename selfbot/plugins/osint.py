@@ -39,9 +39,15 @@ def register(client) -> None:
             
             try:
                 # ارسال به ربات هدف
-                async with client.conversation(TARGET_BOT, timeout=15) as conv:
+                async with client.conversation(TARGET_BOT, timeout=30) as conv:
                     await conv.send_message(f"{target}")
-                    response = await conv.get_response()
+                    
+                    # Wait for the final response (skip loading messages)
+                    while True:
+                        response = await conv.get_response()
+                        if "Looking for data" in response.text or "Lοокinց" in response.text or "Loading" in response.text:
+                            continue
+                        break
                     
                 # ارسال پاسخ به سیو مسیج
                 await client.send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{response.text}\n\n✨ **Jesus Self** ✨")
