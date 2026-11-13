@@ -10,8 +10,11 @@ def register(client) -> None:
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل$"))
     async def panel_cmd(event: events.NewMessage.Event) -> None:
         buttons = [
-            [Button.inline("📸 ذخیره زمان‌دار", data=b"feat_saver"), Button.inline("🎙 تبدیل به ویس", data=b"feat_voice")],
-            [Button.inline("🎵 جستجوی آهنگ", data=b"feat_music"), Button.inline("📊 وضعیت", data=b"feat_status")],
+            [Button.inline("🎮 بازی ها", data=b"cat_games")],
+            [Button.inline("🛠 ابزار ها", data=b"cat_tools")],
+            [Button.inline("👁 نظارت و سرگرمی", data=b"cat_fun")],
+            [Button.inline("🎭 تقلب", data=b"cat_cheat")],
+            [Button.inline("🛡 استاک و امنیت", data=b"cat_security")],
             [Button.inline("❌ بستن پنل", data=b"feat_close")]
         ]
         text = (
@@ -33,3 +36,13 @@ def register(client) -> None:
             await event.answer("🎙 برای تبدیل متن به ویس از دستور .say <text> استفاده کن.", alert=True)
         elif data == "feat_music":
             await event.answer("🎵 برای جستجوی آهنگ از دستور .song <name> استفاده کن.", alert=True)
+        elif data == "cat_games":
+            await event.answer("🎮 بخش بازی‌ها (به‌زودی)", alert=True)
+        elif data == "cat_tools":
+            await event.answer("🛠 بخش ابزارها (به‌زودی)", alert=True)
+        elif data == "cat_fun":
+            await event.answer("👁 بخش نظارت و سرگرمی (به‌زودی)", alert=True)
+        elif data == "cat_cheat":
+            await event.answer("🎭 بخش تقلب (به‌زودی)", alert=True)
+        elif data == "cat_security":
+            await event.answer("🛡 بخش استاک و امنیت (به‌زودی)", alert=True)
