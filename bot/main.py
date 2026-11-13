@@ -43,6 +43,11 @@ CANCEL_KEYBOARD = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+BACK_KEYBOARD = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text="🔙 بازگشت به منوی اصلی")]],
+    resize_keyboard=True
+)
+
 @dp.inline_query()
 async def inline_panel(query: InlineQuery):
     if query.query == "panel" or query.query == "پنل":
@@ -241,7 +246,8 @@ async def cmd_charge(message: Message):
 async def cb_manage_self(message: Message):
     user_id = message.from_user.id
     text, kb = await build_manage_text(user_id)
-    await message.answer(text, reply_markup=kb, parse_mode="HTML")
+    await message.answer(text, reply_markup=BACK_KEYBOARD, parse_mode="HTML")
+    await message.answer("👇 برای مدیریت از دکمه‌های شیشه‌ای بالا استفاده کنید.", reply_markup=kb)
 
 async def build_manage_text(user_id):
     user = await get_user(user_id)
@@ -262,7 +268,7 @@ async def build_manage_text(user_id):
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ روشن کردن", callback_data="toggle_on"), InlineKeyboardButton(text="❌ خاموش کردن", callback_data="toggle_off")],
-        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_manage"), InlineKeyboardButton(text="🔙 بازگشت", callback_data="back_to_main")]
+        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_manage")]
     ])
     return text, kb
 
@@ -320,20 +326,15 @@ async def cb_account(message: Message):
         f"⏳ **زمان باقیمانده:** `{days}` روز، `{hours}` ساعت، `{minutes}` دقیقه، `{seconds}` ثانیه\n\n"
         "⚠️ **توجه:** هر ۱ ساعت، ۲ یاقوت بابت اجرای سلف‌بات مصرف می‌شود."
     )
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 بازگشت", callback_data="back_to_main")]
-    ])
-    await message.answer(text, reply_markup=kb, parse_mode="Markdown")
+    await message.answer(text, reply_markup=BACK_KEYBOARD, parse_mode="Markdown")
 
-@dp.callback_query(F.data == "back_to_main")
-async def cb_back_to_main(callback: CallbackQuery):
-    await callback.message.delete()
+@dp.message(F.text == "🔙 بازگشت به منوی اصلی")
+async def cb_back_to_main_keyboard(message: Message):
     text = (
         "🏠 **منوی اصلی**\n\n"
         "از دکمه‌های زیر استفاده کنید:"
     )
-    await callback.message.answer(text, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
-    await callback.answer()
+    await message.answer(text, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
 
 @dp.message(F.text == "📚 راهنما")
 async def cb_help(message: Message):
