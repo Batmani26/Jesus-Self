@@ -175,7 +175,24 @@ async def process_inline_panel_callback(callback: CallbackQuery):
     elif cat == "fun":
         await callback.answer("👁 بخش نظارت و سرگرمی (به‌زودی)", show_alert=True)
     elif cat == "cheat":
-        await callback.answer("🎭 بخش تقلب (به‌زودی)", show_alert=True)
+        cheat_text = (
+            "🎭 <b>بخش تقلب (بازی‌های شانسی)</b>\n\n"
+            "یکی از بازی‌های زیر را انتخاب کنید. (نتیجه کاملاً تصادفی است)\n"
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🎲 تاس", callback_data="game_dice"), InlineKeyboardButton(text="🎯 دارت", callback_data="game_dart")],
+            [InlineKeyboardButton(text="🏀 بسکتبال", callback_data="game_basketball"), InlineKeyboardButton(text="🎳 بولینگ", callback_data="game_bowling")],
+            [InlineKeyboardButton(text="🎰 کازینو", callback_data="game_casino")],
+            [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(cheat_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=cheat_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
     elif cat == "security":
         guide_text = (
             "🛡 <b>بخش استاک و امنیت</b>\n\n"
@@ -196,6 +213,23 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
+
+@dp.callback_query(F.data.startswith("game_"))
+async def process_dice_games(callback: CallbackQuery):
+    game = callback.data.split("_")[1]
+    emojis = {
+        "dice": "🎲",
+        "dart": "🎯",
+        "basketball": "🏀",
+        "bowling": "🎳",
+        "casino": "🎰"
+    }
+    if game in emojis:
+        if callback.message:
+            await callback.message.answer_dice(emoji=emojis[game])
+        else:
+            await callback.bot.send_dice(chat_id=callback.from_user.id, emoji=emojis[game])
+        await callback.answer()
 
 @dp.callback_query(F.data == "copy_stalk")
 async def cb_copy_stalk(callback: CallbackQuery):
