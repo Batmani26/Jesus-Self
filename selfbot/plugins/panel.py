@@ -9,20 +9,13 @@ def register(client) -> None:
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل"))
     async def panel_cmd(event: events.NewMessage.Event) -> None:
-        print(f"[DEBUG] Panel command matched in chat: {event.chat_id}")
-        buttons = [
-            [Button.inline("🎮 بازی ها", data=b"cat_games")],
-            [Button.inline("🛠 ابزار ها", data=b"cat_tools")],
-            [Button.inline("👁 نظارت و سرگرمی", data=b"cat_fun")],
-            [Button.inline("🎭 تقلب", data=b"cat_cheat")],
-            [Button.inline("🛡 استاک و امنیت", data=b"cat_security")],
-            [Button.inline("❌ بستن پنل", data=b"feat_close")]
-        ]
+        # سلف‌بات‌ها نمی‌توانند دکمه شیشه‌ای بفرستند. لینک به ربات مدیریت می‌دهیم.
         text = (
             "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
-            "از منوی زیر یک قابلیت را انتخاب کنید:"
+            "برای دسترسی به منوی شیشه‌ای و مدیریت قابلیت‌ها، لطفاً به ربات مدیریت مراجعه کنید:\n\n"
+            "👉 [کلیک کنید: @SelfJesusBot](https://t.me/SelfJesusBot)"
         )
-        await event.edit(text, buttons=buttons, parse_mode="md")
+        await event.edit(text, parse_mode="md", link_preview=False)
 
     @client.on(events.CallbackQuery())
     async def panel_callback(event: events.CallbackQuery.Event) -> None:
