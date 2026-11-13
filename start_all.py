@@ -3,6 +3,7 @@ import asyncio
 import logging
 from aiohttp import web
 from bot.main import dp, bot
+from bot.database import init_db
 from main import run as selfbot_run
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s")
@@ -20,6 +21,8 @@ async def start_web_server():
     log.info("Web server started on port 8080")
 
 async def run_all():
+    log.info("Connecting to database...")
+    await init_db()
     log.info("Starting Management Bot and Selfbot...")
     try:
         await asyncio.gather(

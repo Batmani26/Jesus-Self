@@ -37,7 +37,7 @@ CANCEL_KEYBOARD = ReplyKeyboardMarkup(
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    add_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
+    await add_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
     
     caption = (
         f"سلام **{message.from_user.first_name}** عزیز! 👋\n\n"
@@ -72,17 +72,23 @@ async def cmd_charge(message: Message):
         await message.answer("⚠️ آیدی و مقدار باید عدد باشند.")
         return
         
-    add_yaqoot(target_id, amount)
+    await add_yaqoot(target_id, amount)
     await message.answer(f"✅ **{amount}** یاقوت به کاربر `{target_id}` اضافه شد.", parse_mode="Markdown")
     try:
-        await bot.send_message(target_id, f"🎉 **{amount}** یاقوت به حساب شما اضافه شد!")
+        msg = (
+            "💎✨ **شارژ حساب با موفقیت انجام شد!** ✨💎\n\n"
+            f"🎁 مقدار **{amount}** یاقوت به کیف پول شما واریز شد.\n\n"
+            "🚀 حالا می‌توانید از تمام امکانات **Jesus Self** لذت ببرید!\n"
+            "📊 برای مشاهده موجودی و زمان باقیمانده به بخش «حساب کاربری» بروید."
+        )
+        await bot.send_message(target_id, msg, parse_mode="Markdown")
     except Exception:
         pass
 
 @dp.message(F.text == "👤 حساب کاربری")
 async def cb_account(message: Message):
     user_id = message.from_user.id
-    balance = get_yaqoot(user_id)
+    balance = await get_yaqoot(user_id)
     
     remaining_hours = balance // 2
     remaining_days = remaining_hours // 24
@@ -260,7 +266,7 @@ async def process_code_input(message: Message, code: str):
         
     if success:
         session_string = data["client"].session.save()
-        save_session(user_id, session_string)
+        await save_session(user_id, session_string)
         del USER_STATES[user_id]
         del CLIENTS[user_id]
         await data["client"].disconnect()
@@ -300,7 +306,7 @@ async def process_password(message: Message):
         success, error = await verify_password(data["client"], password)
         if success:
             session_string = data["client"].session.save()
-            save_session(message.from_user.id, session_string)
+            await save_session(message.from_user.id, session_string)
             del USER_STATES[message.from_user.id]
             del CLIENTS[message.from_user.id]
             await data["client"].disconnect()

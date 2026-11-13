@@ -1,74 +1,63 @@
-import sqlite3
+import asyncpg
 import os
+import asyncio
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'users.db')
+DB_URL = os.getenv("DATABASE_URL", "postgresql://neondb_owner:npg_p7egLwaNhv1F@ep-young-term-zaeho23i-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require")
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    # جدول کاربران ربات مدیریت
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            first_name TEXT,
-            phone_number TEXT,
-            session_string TEXT,
-            is_active INTEGER DEFAULT 0,
-            yaqoot_balance INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
+pool = None
 
-def add_user(user_id, username, first_name):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT OR IGNORE INTO users (user_id, username, first_name) VALUES (?, ?, ?)
-    ''', (user_id, username, first_name))
-    conn.commit()
-    conn.close()
+async def init_db():
+    global pool
+    if pool is None:
+        pool = await asyncpg.create_pool(DB_URL, min_size=1, max_size=10)
+        async with pool.acquire() as conn:
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id BIGINT PRIMARY KEY,
+                    username TEXT,
+                    first_name TEXT,
+                    phone_number TEXT,
+                    session_string TEXT,
+                    is_active INTEGER DEFAULT 0,
+                    yaqoot_balance INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
 
-def get_user(user_id):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
-    user = cursor.fetchone()
-    conn.close()
-    return user
+async def add_user(user_id, username, first_name):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('''
+            INSERT INTO users (user_id, username, first_name) VALUES ($1, $2, $3)
+            ON CONFLICT (user_id) DO UPDATE SET username = $2, first_name = $3
+        ''', user_id, username, first_name)
 
-def set_user_phone(user_id, phone):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('UPDATE users SET phone_number = ? WHERE user_id = ?', (phone, user_id))
-    conn.commit()
-    conn.close()
+async def get_user(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow('SELECT * FROM users WHERE user_id = $1', user_id)
+        return row
 
-def get_yaqoot(user_id):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT yaqoot_balance FROM users WHERE user_id = ?', (user_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else 0
+async def set_user_phone(user_id, phone):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE users SET phone_number = $1 WHERE user_id = $2', phone, user_id)
 
-def add_yaqoot(user_id, amount):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('UPDATE users SET yaqoot_balance = yaqoot_balance + ? WHERE user_id = ?', (amount, user_id))
-    if cursor.rowcount == 0:
-        # اگه کاربر وجود نداشت، با موجودی اولیه اضافه کن
-        cursor.execute('INSERT INTO users (user_id, yaqoot_balance) VALUES (?, ?)', (user_id, amount))
-    conn.commit()
-    conn.close()
+async def get_yaqoot(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow('SELECT yaqoot_balance FROM users WHERE user_id = $1', user_id)
+        return row['yaqoot_balance'] if row else 0
 
-def save_session(user_id, session_string):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('UPDATE users SET session_string = ?, is_active = 1 WHERE user_id = ?', (session_string, user_id))
-    conn.commit()
-    conn.close()
+async def add_yaqoot(user_id, amount):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('''
+            INSERT INTO users (user_id, yaqoot_balance) VALUES ($1, $2)
+            ON CONFLICT (user_id) DO UPDATE SET yaqoot_balance = users.yaqoot_balance + $2
+        ''', user_id, amount)
 
-init_db()
+async def save_session(user_id, session_string):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE users SET session_string = $1, is_active = 1 WHERE user_id = $2', session_string, user_id)
