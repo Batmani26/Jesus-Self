@@ -16,8 +16,17 @@ def register(client) -> None:
             
         bot_msg = await event.get_reply_message()
         if not bot_msg or not bot_msg.reply_markup:
-            await event.edit("⚠️ پیام ربات دکمه شیشه‌ای ندارد.")
-            return
+            # Search recent messages for the bot's button
+            bot = await event.client.get_entity('@MeowieQVBot')
+            messages = await client.get_messages(event.chat_id, limit=15)
+            for msg in messages:
+                if msg.from_id == bot.id and msg.reply_markup:
+                    bot_msg = msg
+                    break
+            
+            if not bot_msg or not bot_msg.reply_markup:
+                await event.edit("⚠️ پیام ربات با دکمه شیشه‌ای پیدا نشد.")
+                return
             
         # Detect the desired number
         desired = None
