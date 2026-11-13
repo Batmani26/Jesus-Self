@@ -22,7 +22,8 @@ def register(client) -> None:
             "🤖 **پنل کنترل Jesse Self**\n\n"
             "از منوی زیر یک قابلیت را انتخاب کنید:"
         )
-        await event.edit(text, buttons=buttons, parse_mode="html")
+        await event.reply(text, buttons=buttons, parse_mode="md", link_preview=False)
+        await event.delete()
 
     @client.on(events.CallbackQuery())
     async def panel_callback(event: events.CallbackQuery.Event) -> None:
