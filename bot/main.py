@@ -160,10 +160,13 @@ async def refresh_inline_panel(callback: CallbackQuery):
         "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
     )
     try:
-        await callback.message.edit_text(text, reply_markup=callback.message.reply_markup, parse_mode="Markdown")
+        if callback.message:
+            await callback.message.edit_text(text, reply_markup=callback.message.reply_markup, parse_mode="Markdown")
+        else:
+            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=callback.message.reply_markup if callback.message else None, parse_mode="Markdown")
         await callback.answer("✅ پنل بروزرسانی شد!")
-    except Exception:
-        await callback.answer("❌ خطا در بروزرسانی.", show_alert=True)
+    except Exception as e:
+        await callback.answer(f"❌ خطا در بروزرسانی: {e}", show_alert=True)
 
 @dp.callback_query(F.data.startswith("cat_"))
 async def process_inline_panel_callback(callback: CallbackQuery):
@@ -250,10 +253,11 @@ async def process_dice_games(callback: CallbackQuery):
         "casino": "🎰"
     }
     if game in emojis:
-        if callback.message:
-            await callback.message.answer_dice(emoji=emojis[game])
-        else:
+        try:
             await callback.bot.send_dice(chat_id=callback.from_user.id, emoji=emojis[game])
+        except Exception:
+            if callback.message:
+                await callback.message.answer_dice(emoji=emojis[game])
         await callback.answer()
 
 @dp.callback_query(F.data == "copy_stalk")
@@ -303,7 +307,14 @@ async def cb_back_to_panel(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "feat_close")
 async def close_inline_panel(callback: CallbackQuery):
-    await callback.message.delete()
+    try:
+        if callback.message:
+            await callback.message.delete()
+        else:
+            await callback.bot.delete_message(chat_id=callback.from_user.id, message_id=callback.inline_message_id)
+    except Exception:
+        pass
+    await callback.answer()
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
