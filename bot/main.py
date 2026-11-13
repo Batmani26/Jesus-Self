@@ -5,6 +5,11 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, Message, ForceReply, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
 import hashlib
+import datetime
+import pytz
+from datetime import datetime
+from persiantools.jdatetime import JalaliDateTime
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
 from aiogram import F
 from bot.database import add_user, get_user, set_user_phone, save_session, get_yaqoot, add_yaqoot, get_all_active_users, deduct_yaqoot, deactivate_user
 from bot.login import send_code, verify_code, verify_password
@@ -39,11 +44,30 @@ CANCEL_KEYBOARD = ReplyKeyboardMarkup(
 @dp.inline_query()
 async def inline_panel(query: InlineQuery):
     if query.query == "panel" or query.query == "پنل":
-        text = "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\nاز منوی زیر یک قابلیت را انتخاب کنید:"
+        user_id = query.from_user.id
+        balance = await get_yaqoot(user_id)
+        hours = balance // 2
+        days = hours // 24
+        
+        now_utc = datetime.now(pytz.utc)
+        now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
+        time_str = now_tehran.strftime("%H:%M:%S")
+        date_miladi = now_tehran.strftime("%Y/%m/%d")
+        date_shamsi = JalaliDateTime(now_tehran.year, now_tehran.month, now_tehran.day).strftime("%Y/%m/%d")
+        
+        text = (
+            "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
+            f"💎 موجودی: **{balance}** یاقوت\n"
+            f"⏳ معادل: **{hours}** ساعت ({days} روز)\n"
+            f"⏰ ساعت: `{time_str}`\n"
+            f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
+            "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
+        )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
             [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
-            [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
+            [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")],
+            [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel")]
         ])
         result = InlineQueryResultArticle(
             id=hashlib.md5(text.encode()).hexdigest(),
@@ -55,6 +79,33 @@ async def inline_panel(query: InlineQuery):
         await query.answer([result], cache_time=0)
     else:
         await query.answer([], cache_time=0)
+
+@dp.callback_query(F.data == "refresh_panel")
+async def refresh_inline_panel(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    balance = await get_yaqoot(user_id)
+    hours = balance // 2
+    days = hours // 24
+    
+    now_utc = datetime.now(pytz.utc)
+    now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
+    time_str = now_tehran.strftime("%H:%M:%S")
+    date_miladi = now_tehran.strftime("%Y/%m/%d")
+    date_shamsi = JalaliDateTime(now_tehran.year, now_tehran.month, now_tehran.day).strftime("%Y/%m/%d")
+    
+    text = (
+        "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
+        f"💎 موجودی: **{balance}** یاقوت\n"
+        f"⏳ معادل: **{hours}** ساعت ({days} روز)\n"
+        f"⏰ ساعت: `{time_str}`\n"
+        f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
+        "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
+    )
+    try:
+        await callback.message.edit_text(text, reply_markup=callback.message.reply_markup, parse_mode="Markdown")
+        await callback.answer("✅ پنل بروزرسانی شد!")
+    except Exception:
+        await callback.answer("❌ خطا در بروزرسانی.", show_alert=True)
 
 @dp.callback_query(F.data.startswith("cat_"))
 async def process_inline_panel_callback(callback: CallbackQuery):
