@@ -16,8 +16,8 @@ def register(client) -> None:
             msg = await client.send_message(event.chat_id, file=InputMediaDice("🎰"))
             
             if msg and msg.media and hasattr(msg.media, 'value'):
-                if msg.media.value == 64:
-                    # Jackpot! Keep it.
+                if msg.media.value >= 43:
+                    # High score! Keep it.
                     return
             
             asyncio.create_task(msg.delete())
