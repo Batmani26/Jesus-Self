@@ -272,7 +272,7 @@ async def cb_toggle_on(callback: CallbackQuery):
 async def cb_toggle_off(callback: CallbackQuery):
     user_id = callback.from_user.id
     await set_user_active(user_id, 0)
-    await callback.answer("❌ سلف شما خاموش شد.", show_alert=True)
+    await callback.answer("❌ سلف شما با موفقیت خاموش شد!", show_alert=True)
     await callback.message.edit_text("❌ **سلف شما خاموش شد.**\n\nبرای روشن کردن مجدد، دکمه بروزرسانی را بزنید.", parse_mode="Markdown")
 
 @dp.callback_query(F.data == "refresh_manage")
