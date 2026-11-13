@@ -27,6 +27,7 @@ ADMIN_ID = 7099566033
 USER_STATES = {}
 CLIENTS = {}
 TEMP_CODES = {}
+ACTIVE_PANELS = {} # {(chat_id, message_id): user_id}
 
 MAIN_KEYBOARD = ReplyKeyboardMarkup(
     keyboard=[
@@ -77,8 +78,44 @@ async def inline_panel(query: InlineQuery):
             reply_markup=kb
         )
         await query.answer([result], cache_time=0)
+        
+        # We can't get the message_id from inline query directly. 
+        # The userbot will send it, and we track it via the userbot's event.
     else:
         await query.answer([], cache_time=0)
+
+@dp.message(F.via_bot)
+async def track_inline_panel(message: Message):
+    if message.via_bot and message.via_bot.username == "SelfJesusBot":
+        if "پنل کنترل" in message.text:
+            ACTIVE_PANELS[(message.chat.id, message.message_id)] = message.from_user.id
+
+async def panel_updater_loop():
+    while True:
+        await asyncio.sleep(1)
+        now_utc = datetime.now(pytz.utc)
+        now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
+        time_str = now_tehran.strftime("%H:%M:%S")
+        date_miladi = now_tehran.strftime("%Y/%m/%d")
+        date_shamsi = JalaliDateTime(now_tehran.year, now_tehran.month, now_tehran.day).strftime("%Y/%m/%d")
+        
+        for (chat_id, msg_id), user_id in list(ACTIVE_PANELS.items()):
+            try:
+                balance = await get_yaqoot(user_id)
+                hours = balance // 2
+                days = hours // 24
+                text = (
+                    "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
+                    f"💎 موجودی: **{balance}** یاقوت\n"
+                    f"⏳ معادل: **{hours}** ساعت ({days} روز)\n"
+                    f"⏰ ساعت: `{time_str}`\n"
+                    f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
+                    "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
+                )
+                await bot.edit_message_text(chat_id=chat_id, message_id=msg_id, text=text, parse_mode="Markdown")
+            except Exception as e:
+                if "message is not modified" not in str(e).lower():
+                    del ACTIVE_PANELS[(chat_id, msg_id)]
 
 @dp.callback_query(F.data == "refresh_panel")
 async def refresh_inline_panel(callback: CallbackQuery):

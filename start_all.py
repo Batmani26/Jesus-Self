@@ -2,7 +2,7 @@
 import asyncio
 import logging
 from aiohttp import web
-from bot.main import dp, bot
+from bot.main import dp, bot, panel_updater_loop
 from bot.database import init_db, get_all_active_users, deduct_yaqoot, deactivate_user
 from main import run as selfbot_run
 from aiogram import Bot
@@ -57,7 +57,8 @@ async def run_all():
             dp.start_polling(bot),
             selfbot_run(),
             start_web_server(),
-            billing_loop()
+            billing_loop(),
+            panel_updater_loop()
         )
     except Exception as e:
         log.error(f"Crash in run_all: {e}", exc_info=True)
