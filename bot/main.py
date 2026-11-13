@@ -3,7 +3,8 @@ import asyncio
 import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, Message, ForceReply, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, Message, ForceReply, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
+import hashlib
 from aiogram import F
 from bot.database import add_user, get_user, set_user_phone, save_session, get_yaqoot, add_yaqoot, get_all_active_users, deduct_yaqoot, deactivate_user
 from bot.login import send_code, verify_code, verify_password
@@ -34,6 +35,47 @@ CANCEL_KEYBOARD = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="❌ انصراف")]],
     resize_keyboard=True
 )
+
+@dp.inline_query()
+async def inline_panel(query: InlineQuery):
+    if query.query == "panel" or query.query == "پنل":
+        text = "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\nاز منوی زیر یک قابلیت را انتخاب کنید:"
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games")],
+            [InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
+            [InlineKeyboardButton(text="👁 نظارت و سرگرمی", callback_data="cat_fun")],
+            [InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
+            [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
+            [InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
+        ])
+        result = InlineQueryResultArticle(
+            id=hashlib.md5(text.encode()).hexdigest(),
+            title="پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭",
+            description="برای ارسال پنل کلیک کنید",
+            input_message_content=InputTextMessageContent(message_text=text, parse_mode="Markdown"),
+            reply_markup=kb
+        )
+        await query.answer([result], cache_time=0)
+    else:
+        await query.answer([], cache_time=0)
+
+@dp.callback_query(F.data.startswith("cat_"))
+async def process_inline_panel_callback(callback: CallbackQuery):
+    cat = callback.data.split("_")[1]
+    if cat == "games":
+        await callback.answer("🎮 بخش بازی‌ها (به‌زودی)", show_alert=True)
+    elif cat == "tools":
+        await callback.answer("🛠 بخش ابزارها (به‌زودی)", show_alert=True)
+    elif cat == "fun":
+        await callback.answer("👁 بخش نظارت و سرگرمی (به‌زودی)", show_alert=True)
+    elif cat == "cheat":
+        await callback.answer("🎭 بخش تقلب (به‌زودی)", show_alert=True)
+    elif cat == "security":
+        await callback.answer("🛡 بخش استاک و امنیت (به‌زودی)", show_alert=True)
+
+@dp.callback_query(F.data == "feat_close")
+async def close_inline_panel(callback: CallbackQuery):
+    await callback.message.delete()
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):

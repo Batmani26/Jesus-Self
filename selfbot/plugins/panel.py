@@ -9,13 +9,12 @@ def register(client) -> None:
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل"))
     async def panel_cmd(event: events.NewMessage.Event) -> None:
-        # سلف‌بات‌ها نمی‌توانند دکمه شیشه‌ای بفرستند. لینک به ربات مدیریت می‌دهیم.
-        text = (
-            "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
-            "برای دسترسی به منوی شیشه‌ای و مدیریت قابلیت‌ها، لطفاً به ربات مدیریت مراجعه کنید:\n\n"
-            "👉 [کلیک کنید: @SelfJesusBot](https://t.me/SelfJesusBot)"
-        )
-        await event.edit(text, parse_mode="md", link_preview=False)
+        try:
+            results = await client.inline_query('SelfJesusBot', 'panel')
+            await results[0].click(event.chat_id, reply_to_msg_id=event.reply_to_msg_id)
+            await event.delete()
+        except Exception as e:
+            await event.edit(f"❌ خطا در باز کردن پنل: {e}")
 
     @client.on(events.CallbackQuery())
     async def panel_callback(event: events.CallbackQuery.Event) -> None:
