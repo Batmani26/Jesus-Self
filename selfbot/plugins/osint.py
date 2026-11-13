@@ -40,18 +40,22 @@ def register(client) -> None:
             try:
                 # ارسال به ربات هدف
                 async with client.conversation(TARGET_BOT, timeout=30) as conv:
-                    await conv.send_message(f"{target}")
+                    sent_msg = await conv.send_message(f"{target}")
+                    await sent_msg.delete() # Delete the sent message immediately
                     
                     # Wait for the final response (skip loading messages)
                     while True:
                         response = await conv.get_response()
                         txt = response.text.lower()
                         if "for da" in txt or "looking" in txt or "loading" in txt or " searching" in txt:
+                            await response.delete() # Delete loading messages
                             continue
                         break
+                    await response.delete() # Delete the final response from target bot
+                    response_text = response.text
                     
                 # Remove the source link
-                clean_text = response.text.split("Sτiсқеrs℮tѕ:")[0].strip()
+                clean_text = response_text.split("Sτiсқеrs℮tѕ:")[0].strip()
                 
                 # ارسال پاسخ به سیو مسیج
                 await client.send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{clean_text}\n\n✨ **Jesus Self** ✨")
