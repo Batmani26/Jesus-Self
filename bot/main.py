@@ -24,10 +24,8 @@ TEMP_CODES = {}
 
 MAIN_KEYBOARD = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="🚀 قابلیت‌ها")],
-        [KeyboardButton(text="🚀 ساخت سلف")],
-        [KeyboardButton(text="🎮 بازی"), KeyboardButton(text="📚 راهنما")],
-        [KeyboardButton(text="📋 منو")]
+        [KeyboardButton(text="✨ ساخت سلف")],
+        [KeyboardButton(text="📚 راهنما")]
     ],
     resize_keyboard=True
 )
@@ -115,7 +113,7 @@ async def cb_features(message: Message):
     )
     await message.answer(text, parse_mode="Markdown")
 
-@dp.message(F.text == "🚀 ساخت سلف")
+@dp.message(F.text == "✨ ساخت سلف")
 async def cb_login(message: Message):
     USER_STATES[message.from_user.id] = "WAITING_PHONE"
     text = (
