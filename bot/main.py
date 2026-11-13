@@ -178,16 +178,19 @@ async def process_inline_panel_callback(callback: CallbackQuery):
     elif cat == "security":
         guide_text = (
             "🛡 **بخش استاک و امنیت**\n\n"
-            "> سلف ما قابلیتی برای کاربران هموار ساخته که با استفاده از آیدی عددی و یا یوزرنیم شخص، اطلاعاتی از اکانت مورد نظر را به شما نشان دهد.\n\n"
-            "> جهت استفاده از این قابلیت، شما با ارسال `.استاک` یک پیامی در سیو مسیج خود دریافت می‌کنید که منتظر دریافت آیدی عددی و یا یوزرنیم از طرف شما است و شما با ارسال آن، اطلاعاتی را در همان سیو مسیج دریافت می‌کنید.\n\n"
+            "سلف ما قابلیتی برای کاربران هموار ساخته که با استفاده از آیدی عددی و یا یوزرنیم شخص، اطلاعاتی از اکانت مورد نظر را به شما نشان دهد.\n\n"
+            "جهت استفاده از این قابلیت، شما با ارسال `.استاک` یک پیامی در سیو مسیج خود دریافت می‌کنید که منتظر دریافت آیدی عددی و یا یوزرنیم از طرف شما است و شما با ارسال آن، اطلاعاتی را در همان سیو مسیج دریافت می‌کنید.\n\n"
             "👇 برای کپی کردن دستور، روی آن کلیک کنید:"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="📋 کپی دستور .استاک", callback_data="copy_stalk")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
-        await callback.message.edit_text(guide_text, reply_markup=kb, parse_mode="Markdown")
-        await callback.answer()
+        try:
+            await callback.message.edit_text(guide_text, reply_markup=kb, parse_mode="Markdown")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
 
 @dp.callback_query(F.data == "copy_stalk")
 async def cb_copy_stalk(callback: CallbackQuery):
