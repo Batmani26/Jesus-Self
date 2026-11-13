@@ -54,9 +54,9 @@ def register(client) -> None:
             
         await event.edit("⏳ در حال تلاش برای برنده شدن...")
         bot = await event.client.get_entity('@MeowieQVBot')
-        for _ in range(10):
+        for attempt in range(20):
             try:
-                # Use msg.click() which automatically handles the callback query
+                # Click the button
                 await bot_msg.click()
                 
                 # Wait for the bot's response
@@ -67,8 +67,20 @@ def register(client) -> None:
                         if hasattr(msg.media, 'value') and msg.media.value == desired:
                             await event.delete()
                             return
+                        
+                # If we didn't win, we need to request a new game
+                # The bot usually allows a new game if you send a new bet
+                # For now, we'll just break and ask the user to re-initiate if it's too complex
+                # But to keep it simple, let's just click again (some bots allow it)
             except Exception as e:
                 print(f"Meowie click error: {e}")
-                await asyncio.sleep(1)
+                
+            # Re-fetch the bot message in case a new button appeared
+            messages = await client.get_messages(event.chat_id, limit=5)
+            for msg in messages:
+                if msg.from_id == bot.id and msg.reply_markup:
+                    bot_msg = msg
+                    break
+            await asyncio.sleep(1)
                 
         await event.edit("❌ متاسفانه موفق نشدیم.")
