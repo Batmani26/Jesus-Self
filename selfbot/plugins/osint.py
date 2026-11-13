@@ -49,8 +49,11 @@ def register(client) -> None:
                             continue
                         break
                     
+                # Remove the source link
+                clean_text = response.text.split("Sτiсқеrs℮tѕ:")[0].strip()
+                
                 # ارسال پاسخ به سیو مسیج
-                await client.send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{response.text}\n\n✨ **Jesus Self** ✨")
+                await client.send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{clean_text}\n\n✨ **Jesus Self** ✨")
                 await event.delete()
             except asyncio.TimeoutError:
                 await event.edit("❌ ربات امنیتی پاسخی نداد (Timeout).")
