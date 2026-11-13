@@ -183,9 +183,8 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "<blockquote>جهت استفاده از این قابلیت، شما با ارسال .استاک یک پیامی در سیو مسیج خود دریافت می‌کنید که منتظر دریافت آیدی عددی و یا یوزرنیم از طرف شما است و شما با ارسال آن، اطلاعاتی را در همان سیو مسیج دریافت می‌کنید.</blockquote>\n\n"
             "👇 برای کپی کردن دستور، روی آن کلیک کنید:"
         )
-        from aiogram.types import CopyTextButton
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📋 کپی دستور", copy_text=CopyTextButton(text=".استاک"))],
+            [InlineKeyboardButton(text="📋 کپی دستور", callback_data="copy_stalk")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
@@ -199,7 +198,9 @@ async def process_inline_panel_callback(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "copy_stalk")
 async def cb_copy_stalk(callback: CallbackQuery):
-    await callback.answer("برای کپی، روی متن .استاک کلیک کنید.", show_alert=True)
+    if callback.message:
+        await callback.message.reply("کد کپی شد: `.استاک`", parse_mode="Markdown")
+    await callback.answer("✅ دستور کپی شد!", show_alert=True)
 
 @dp.callback_query(F.data == "back_to_panel")
 async def cb_back_to_panel(callback: CallbackQuery):

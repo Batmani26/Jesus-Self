@@ -72,9 +72,6 @@ async def stop_user_client(user_id):
         del ACTIVE_CLIENTS[user_id]
         log.info(f"Stopped selfbot for user {user_id}")
 
-from selfbot.config import config
-from bot.main import ADMIN_ID
-
 async def manager_loop():
     while True:
         try:
@@ -96,4 +93,4 @@ async def manager_loop():
                     
         except Exception as e:
             log.error(f"Manager loop error: {e}")
-        await asyncio.sleep(60)
+        await asyncio.sleep(10)
