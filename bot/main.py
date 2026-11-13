@@ -241,7 +241,7 @@ async def cmd_charge(message: Message):
 async def cb_manage_self(message: Message):
     user_id = message.from_user.id
     text, kb = await build_manage_text(user_id)
-    await message.answer(text, reply_markup=kb, parse_mode="Markdown")
+    await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
 async def build_manage_text(user_id):
     user = await get_user(user_id)
@@ -254,11 +254,11 @@ async def build_manage_text(user_id):
     minutes = (total_seconds % 3600) // 60
     seconds = total_seconds % 60
     text = (
-        f"⚙️ **مدیریت سلف**\n\n"
-        f"📊 **وضعیت:** {status_text}\n"
-        f"💎 **موجودی یاقوت:** `{balance}`\n"
-        f"⏳ **زمان باقیمانده:** `{days}` روز، `{hours}` ساعت، `{minutes}` دقیقه، `{seconds}` ثانیه\n\n"
-        "⚠️ **توجه:** هزینه هر بار روشن کردن سلف، **۱۰ یاقوت** است."
+        f"⚙️ <b>مدیریت سلف</b>\n\n"
+        f"📊 <b>وضعیت:</b> {status_text}\n"
+        f"💎 <b>موجودی یاقوت:</b> <code>{balance}</code>\n"
+        f"⏳ <b>زمان باقیمانده:</b> <code>{days}</code> روز، <code>{hours}</code> ساعت، <code>{minutes}</code> دقیقه، <code>{seconds}</code> ثانیه\n\n"
+        "⚠️ <b>توجه:</b> هزینه هر بار روشن کردن سلف، <b>۱۰ یاقوت</b> است."
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ روشن کردن", callback_data="toggle_on"), InlineKeyboardButton(text="❌ خاموش کردن", callback_data="toggle_off")],
@@ -273,19 +273,25 @@ async def cb_toggle_on(callback: CallbackQuery):
     if balance < 10:
         await callback.answer("❌ موجودی یاقوت شما کمتر از ۱۰ است!", show_alert=True)
         return
-    await deduct_yaqoot(user_id, 10)
-    await set_user_active(user_id, 1)
-    text, kb = await build_manage_text(user_id)
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-    await callback.answer("✅ سلف شما با موفقیت روشن شد!", show_alert=True)
+    try:
+        await deduct_yaqoot(user_id, 10)
+        await set_user_active(user_id, 1)
+        text, kb = await build_manage_text(user_id)
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        await callback.answer("✅ سلف شما با موفقیت روشن شد!", show_alert=True)
+    except Exception as e:
+        await callback.answer(f"خطا: {e}", show_alert=True)
 
 @dp.callback_query(F.data == "toggle_off")
 async def cb_toggle_off(callback: CallbackQuery):
     user_id = callback.from_user.id
-    await set_user_active(user_id, 0)
-    text, kb = await build_manage_text(user_id)
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-    await callback.answer("❌ سلف شما با موفقیت خاموش شد!", show_alert=True)
+    try:
+        await set_user_active(user_id, 0)
+        text, kb = await build_manage_text(user_id)
+        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        await callback.answer("❌ سلف شما با موفقیت خاموش شد!", show_alert=True)
+    except Exception as e:
+        await callback.answer(f"خطا: {e}", show_alert=True)
 
 @dp.callback_query(F.data == "refresh_manage")
 async def cb_refresh_manage(callback: CallbackQuery):
