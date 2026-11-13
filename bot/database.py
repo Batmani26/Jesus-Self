@@ -24,6 +24,8 @@ async def init_db():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
+            # Add last_deduction if it doesn't exist (for existing tables)
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_deduction TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP')
 
 async def add_user(user_id, username, first_name):
     await init_db()
