@@ -52,13 +52,9 @@ async def cmd_start(message: Message):
     photo_url = "https://i.ibb.co/JwLFZy9c/Jesus-Self-Neon-Telegram-Fantasy-Poster.png" 
     
     try:
-        # ارسال به صورت فایل (Document) برای جلوگیری از افت کیفیت و تغییر نسبت تصویر
-        await message.answer_document(document=photo_url, caption=caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
+        await message.answer_photo(photo=photo_url, caption=caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
     except Exception:
-        try:
-            await message.answer_photo(photo=photo_url, caption=caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
-        except Exception:
-            await message.answer(caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
+        await message.answer(caption, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
 
 @dp.message(F.text == "📚 راهنما")
 async def cb_help(message: Message):
