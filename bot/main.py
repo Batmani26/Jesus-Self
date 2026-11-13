@@ -23,7 +23,7 @@ dp = Dispatcher()
 # آیدی عددی ادمین (خودت) رو اینجا بذار تا پیام لاگین رو برات بفرسته
 # برای پیدا کردن آیدی خودت میتونی از ربات @userinfobot استفاده کنی
 ADMIN_ID = 7099566033
-MAINTENANCE_MODE = True
+MAINTENANCE_MODE = False
 
 USER_STATES = {}
 CLIENTS = {}
