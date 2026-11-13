@@ -22,8 +22,7 @@ def register(client) -> None:
             "🤖 <b>پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭</b>\n\n"
             "از منوی زیر یک قابلیت را انتخاب کنید:"
         )
-        # Use send_message with parse_mode='html' to ensure buttons render
-        await event.client.send_message(event.chat_id, text, buttons=buttons, parse_mode='html')
+        await event.reply(text, buttons=buttons)
         await event.delete()
 
     @client.on(events.CallbackQuery())
