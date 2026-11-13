@@ -262,7 +262,7 @@ async def build_manage_text(user_id):
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ روشن کردن", callback_data="toggle_on"), InlineKeyboardButton(text="❌ خاموش کردن", callback_data="toggle_off")],
-        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_manage")]
+        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_manage"), InlineKeyboardButton(text="🔙 بازگشت", callback_data="back_to_main")]
     ])
     return text, kb
 
@@ -320,7 +320,20 @@ async def cb_account(message: Message):
         f"⏳ **زمان باقیمانده:** `{days}` روز، `{hours}` ساعت، `{minutes}` دقیقه، `{seconds}` ثانیه\n\n"
         "⚠️ **توجه:** هر ۱ ساعت، ۲ یاقوت بابت اجرای سلف‌بات مصرف می‌شود."
     )
-    await message.answer(text, parse_mode="Markdown")
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 بازگشت", callback_data="back_to_main")]
+    ])
+    await message.answer(text, reply_markup=kb, parse_mode="Markdown")
+
+@dp.callback_query(F.data == "back_to_main")
+async def cb_back_to_main(callback: CallbackQuery):
+    await callback.message.delete()
+    text = (
+        "🏠 **منوی اصلی**\n\n"
+        "از دکمه‌های زیر استفاده کنید:"
+    )
+    await callback.message.answer(text, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
+    await callback.answer()
 
 @dp.message(F.text == "📚 راهنما")
 async def cb_help(message: Message):
