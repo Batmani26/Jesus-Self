@@ -41,12 +41,9 @@ async def inline_panel(query: InlineQuery):
     if query.query == "panel" or query.query == "پنل":
         text = "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\nاز منوی زیر یک قابلیت را انتخاب کنید:"
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games")],
-            [InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
-            [InlineKeyboardButton(text="👁 نظارت و سرگرمی", callback_data="cat_fun")],
-            [InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
-            [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
-            [InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
+            [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
+            [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
+            [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
         ])
         result = InlineQueryResultArticle(
             id=hashlib.md5(text.encode()).hexdigest(),
