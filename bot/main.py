@@ -173,7 +173,55 @@ async def process_inline_panel_callback(callback: CallbackQuery):
     elif cat == "cheat":
         await callback.answer("🎭 بخش تقلب (به‌زودی)", show_alert=True)
     elif cat == "security":
-        await callback.answer("🛡 بخش استاک و امنیت (به‌زودی)", show_alert=True)
+        guide_text = (
+            "🛡 <b>بخش استاک و امنیت</b>\n\n"
+            "<blockquote>سلف ما قابلیتی برای کاربران هموار ساخته که با استفاده از آیدی عددی و یا یوزرنیم شخص، اطلاعاتی از اکانت مورد نظر را به شما نشان دهد.</blockquote>\n\n"
+            "<blockquote>جهت استفاده از این قابلیت، شما با ارسال <code>.استاک</code> یک پیامی در سیو مسیج خود دریافت می‌کنید که منتظر دریافت آیدی عددی و یا یوزرنیم از طرف شما است و شما با ارسال آن، اطلاعاتی را در همان سیو مسیج دریافت می‌کنید.</blockquote>\n\n"
+            "👇 برای کپی کردن دستور، روی آن کلیک کنید:"
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📋 کپی دستور .استاک", callback_data="copy_stalk")],
+            [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
+        ])
+        await callback.message.edit_text(guide_text, reply_markup=kb, parse_mode="HTML")
+        await callback.answer()
+
+@dp.callback_query(F.data == "copy_stalk")
+async def cb_copy_stalk(callback: CallbackQuery):
+    await callback.answer("دستور .استاک کپی شد! (می‌توانید آن را در هر چتی بفرستید)", show_alert=True)
+
+@dp.callback_query(F.data == "back_to_panel")
+async def cb_back_to_panel(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    balance = await get_yaqoot(user_id)
+    total_seconds = balance * 1800
+    days = total_seconds // 86400
+    hours = (total_seconds % 86400) // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    
+    now_utc = datetime.now(pytz.utc)
+    now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
+    time_str = now_tehran.strftime("%H:%M:%S")
+    date_miladi = now_tehran.strftime("%Y/%m/%d")
+    date_shamsi = JalaliDateTime(now_tehran.year, now_tehran.month, now_tehran.day).strftime("%Y/%m/%d")
+    
+    text = (
+        "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
+        f"💎 موجودی: **{balance}** یاقوت\n"
+        f"⏳ معادل: **{days}** روز، **{hours}** ساعت، **{minutes}** دقیقه، **{seconds}** ثانیه\n"
+        f"⏰ ساعت: `{time_str}`\n"
+        f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
+        "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
+    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
+        [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
+        [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")],
+        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel")]
+    ])
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+    await callback.answer()
 
 @dp.callback_query(F.data == "feat_close")
 async def close_inline_panel(callback: CallbackQuery):
