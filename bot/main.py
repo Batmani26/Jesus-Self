@@ -177,6 +177,27 @@ async def refresh_inline_panel(callback: CallbackQuery):
 @dp.callback_query(F.data.startswith("cat_"))
 async def process_inline_panel_callback(callback: CallbackQuery):
     data_str = callback.data
+    if data_str == "cat_dart_info":
+        info_text = (
+            "🎯 <b>بخش تقلب دارت</b>\n\n"
+            "<blockquote>با استفاده از دستور زیر می‌توانید دارت تلگرام را مجبور کنید دقیقاً به وسط هدف (بولزآی) بخورد. کافیست دستور را در هر چتی ارسال کنید.</blockquote>\n\n"
+            "<b>دستور:</b>\n"
+            "<code>.دارت</code>\n\n"
+            "👇 برای کپی، روی دستور کلیک کنید."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_cheat")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
     if data_str == "cat_dice_info":
         info_text = (
             "🎲 <b>بخش تقلب تاس</b>\n\n"
@@ -216,7 +237,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "یکی از بازی‌های زیر را انتخاب کنید. (نتیجه کاملاً تصادفی است)\n"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🎲 تاس", callback_data="cat_dice_info"), InlineKeyboardButton(text="🎯 دارت", callback_data="game_dart")],
+            [InlineKeyboardButton(text="🎲 تاس", callback_data="cat_dice_info"), InlineKeyboardButton(text="🎯 دارت", callback_data="cat_dart_info")],
             [InlineKeyboardButton(text="🏀 بسکتبال", callback_data="game_basketball"), InlineKeyboardButton(text="🎳 بولینگ", callback_data="game_bowling")],
             [InlineKeyboardButton(text="🎰 کازینو", callback_data="game_casino")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
