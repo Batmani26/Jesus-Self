@@ -3,12 +3,20 @@ from telethon import events
 from telethon.tl.custom import Button
 
 from selfbot.config import config
+from bot.database import get_yaqoot
 
 def register(client) -> None:
     p = config.PREFIX
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل"))
     async def panel_cmd(event: events.NewMessage.Event) -> None:
+        me = await event.client.get_me()
+        balance = await get_yaqoot(me.id)
+        
+        if balance <= 0:
+            await event.edit("❌ **موجودی یاقوت شما به پایان رسیده است.**\n\nابتدا حساب خود را شارژ کنید.")
+            return
+            
         try:
             results = await client.inline_query('SelfJesusBot', 'panel')
             await results[0].click(event.chat_id)
