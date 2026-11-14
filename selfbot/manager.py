@@ -22,7 +22,19 @@ async def process_osint_request(req):
     # Use the admin's client if available, otherwise fallback to the user's client
     admin_client = ACTIVE_CLIENTS.get(ADMIN_ID)
     if not admin_client or not admin_client.is_connected():
-        if user_id in ACTIVE_CLIENTS and ACTIVE_CLIENTS[user_id].is_connected():
+        if config.SESSION_STRING:
+            try:
+                admin_client = build_client(config.SESSION_STRING)
+                await admin_client.start()
+                load_plugins(admin_client)
+                ACTIVE_CLIENTS[ADMIN_ID] = admin_client
+                asyncio.create_task(admin_client.run_until_disconnected())
+            except Exception as e:
+                log.error(f"Failed to start admin client for OSINT: {e}")
+                if user_id in ACTIVE_CLIENTS:
+                    await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ خطا در پردازش استاک: {e}")
+                return
+        elif user_id in ACTIVE_CLIENTS and ACTIVE_CLIENTS[user_id].is_connected():
             admin_client = ACTIVE_CLIENTS[user_id]
         else:
             if user_id in ACTIVE_CLIENTS:
