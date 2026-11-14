@@ -131,7 +131,7 @@ async def manager_loop():
                     if client and client.is_connected():
                         from bot.database import get_meow_interval
                         interval = await get_meow_interval(uid)
-                        log.info(f"FORCE RESTARTING meow task for user {uid} in chat {cid} with interval {interval}")
+                        log.info(f"Starting meow task for user {uid} in chat {cid} with interval {interval}")
                         MEOW_TASKS[cid] = asyncio.create_task(meow_loop_wrapper(client, cid, interval))
                         
             # Clean up tasks that are no longer active in DB

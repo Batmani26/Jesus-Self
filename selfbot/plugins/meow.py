@@ -11,11 +11,13 @@ async def meow_loop_wrapper(client, chat_id, interval_str):
     try:
         parts = interval_str.strip().split(':')
         cooldown = (int(parts[0]) * 60) + int(parts[1])
+        if cooldown <= 0:
+            raise ValueError("Cooldown must be > 0")
     except Exception as e:
         print(f"[MEOW] Invalid interval '{interval_str}', defaulting to 4:10. Error: {e}")
         cooldown = 250 # Fallback to 4:10 only if parsing fails
         
-    print(f"[MEOW] Starting loop for {chat_id} with fixed cooldown: {cooldown}s")
+    print(f"[MEOW] Starting loop for {chat_id} with exact cooldown: {cooldown}s")
         
     while True:
         try:
@@ -24,6 +26,7 @@ async def meow_loop_wrapper(client, chat_id, interval_str):
                 
             try:
                 await client.send_message(chat_id, "میو")
+                print(f"[MEOW] Sent meow to {chat_id}. Waiting {cooldown}s...")
             except Exception as e:
                 print(f"[MEOW] Send error: {e}")
                 await asyncio.sleep(5)
@@ -32,6 +35,7 @@ async def meow_loop_wrapper(client, chat_id, interval_str):
             # Sleep for exactly the fixed cooldown
             await asyncio.sleep(cooldown)
         except asyncio.CancelledError:
+            print(f"[MEOW] Task for {chat_id} cancelled.")
             break
         except Exception as e:
             print(f"[MEOW ERROR] {e}")
