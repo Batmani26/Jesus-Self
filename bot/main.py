@@ -515,7 +515,7 @@ async def build_manage_text(user_id):
         "⚠️ <b>توجه:</b> هزینه هر بار روشن کردن سلف، <b>۱۰ یاقوت</b> است."
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ روشن کردن", callback_data="toggle_on"), InlineKeyboardButton(text="❌ خاموش کردن", callback_data="toggle_off")],
+        [InlineKeyboardButton(text="🟢 روشن کردن", callback_data="toggle_on"), InlineKeyboardButton(text="🔴 خاموش کردن", callback_data="toggle_off")],
         [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_manage"), InlineKeyboardButton(text="🔙 بازگشت", callback_data="back_to_main")]
     ])
     return text, kb
