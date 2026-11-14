@@ -107,20 +107,35 @@ async def manager_loop():
         try:
             users = await get_all_active_users()
             active_ids = {u['user_id'] for u in users}
-            # Ensure admin is always active if session string is available
+            
             from bot.main import ADMIN_ID
             from selfbot.config import config
             if config.SESSION_STRING and ADMIN_ID not in active_ids:
                 active_ids.add(ADMIN_ID)
             
+            # Check existing clients health
+            for user_id, client in list(ACTIVE_CLIENTS.items()):
+                try:
+                    if not client.is_connected():
+                        log.warning(f"Client for user {user_id} is disconnected, restarting...")
+                        await stop_user_client(user_id)
+                except Exception:
+                    await stop_user_client(user_id)
+            
+            # Start missing clients
             for u in users:
                 if u['user_id'] not in ACTIVE_CLIENTS and u['session_string']:
                     await start_user_client(u['user_id'], u['session_string'])
                     
+            # Ensure admin is running
+            if config.SESSION_STRING and ADMIN_ID not in ACTIVE_CLIENTS:
+                await start_user_client(ADMIN_ID, config.SESSION_STRING)
+                    
+            # Stop clients that are no longer active
             for user_id in list(ACTIVE_CLIENTS.keys()):
                 if user_id not in active_ids:
                     await stop_user_client(user_id)
                     
         except Exception as e:
             log.error(f"Manager loop error: {e}")
-        await asyncio.sleep(10)
+        await asyncio.sleep(10) # Check every 10 seconds for faster recovery
