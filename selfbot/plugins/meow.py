@@ -15,6 +15,8 @@ async def meow_loop_wrapper(client, chat_id, interval_str):
         print(f"[MEOW] Invalid interval '{interval_str}', defaulting to 4:10. Error: {e}")
         cooldown = 250 # Fallback to 4:10 only if parsing fails
         
+    print(f"[MEOW] Starting loop for {chat_id} with fixed cooldown: {cooldown}s")
+        
     while True:
         try:
             while not client.is_connected():
@@ -27,6 +29,7 @@ async def meow_loop_wrapper(client, chat_id, interval_str):
                 await asyncio.sleep(5)
                 continue
                 
+            # Sleep for exactly the fixed cooldown
             await asyncio.sleep(cooldown)
         except asyncio.CancelledError:
             break
