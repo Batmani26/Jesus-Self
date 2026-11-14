@@ -292,7 +292,45 @@ async def process_inline_panel_callback(callback: CallbackQuery):
 
     cat = data_str.split("_")[1]
     if cat == "games":
-        await callback.answer("🎮 بخش بازی‌ها (به‌زودی)", show_alert=True)
+        games_text = (
+            "🎮 <b>بخش بازی‌ها</b>\n\n"
+            "بازی مورد نظر خود را انتخاب کنید:"
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🐱 میویی", callback_data="cat_meowie_info")],
+            [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(games_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=games_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "cat_meowie_info":
+        info_text = (
+            "🐱 <b>بخش میویی (Meowie)</b>\n\n"
+            "<blockquote>با استفاده از این قابلیت، می‌توانید در گروه‌هایی که ربات میویی وجود دارد، به صورت خودکار کلمه «میو» را ارسال کنید تا امتیاز جمع کنید.</blockquote>\n\n"
+            "<b>دستورات:</b>\n"
+            "<code>.میو روشن</code> (برای شروع میو کردن در گروه)\n"
+            "<code>.میو خاموش</code> (برای توقف)\n\n"
+            "👇 برای کپی، روی هر دستور کلیک کنید."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_games")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
     elif cat == "tools":
         await callback.answer("🛠 بخش ابزارها (به‌زودی)", show_alert=True)
     elif cat == "fun":
