@@ -111,7 +111,11 @@ async def get_all_meow_active_users():
 async def set_meow_target_db(user_id, chat_id, chat_title):
     await init_db()
     async with pool.acquire() as conn:
-        await conn.execute('UPDATE users SET meow_chat_id = $1, meow_chat_title = $2 WHERE user_id = $3', chat_id, chat_title, user_id)
+        # Ensure user exists before updating
+        await conn.execute('''
+            INSERT INTO users (user_id, meow_chat_id, meow_chat_title) VALUES ($1, $2, $3)
+            ON CONFLICT (user_id) DO UPDATE SET meow_chat_id = $2, meow_chat_title = $3
+        ''', user_id, chat_id, chat_title)
 
 async def get_meow_target_db(user_id):
     await init_db()
