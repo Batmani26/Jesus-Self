@@ -6,36 +6,25 @@ from selfbot.config import config
 
 MEOW_TASKS = {}
 
-async def meow_loop_wrapper(client, chat_id):
-    cooldown = 250 # Default initial cooldown
-    
+async def meow_loop_wrapper(client, chat_id, interval_str):
+    # Parse M:SS
+    try:
+        parts = interval_str.split(':')
+        cooldown = (int(parts[0]) * 60) + int(parts[1])
+    except Exception:
+        cooldown = 250 # Fallback to 4:10
+        
     while True:
         try:
-            # Block until the client is connected
             while not client.is_connected():
                 await asyncio.sleep(2)
                 
             try:
-                msg = await client.send_message(chat_id, "میو")
+                await client.send_message(chat_id, "میو")
             except Exception as e:
                 print(f"[MEOW] Send error: {e}")
                 await asyncio.sleep(5)
                 continue
-                
-            # Attempt to read the cooldown from the bot's reply
-            await asyncio.sleep(3)
-            try:
-                updated_msg = await client.get_messages(chat_id, ids=msg.id)
-                if updated_msg and updated_msg.reply_to_msg_id:
-                    reply = await updated_msg.get_reply_message()
-                    if reply and reply.text:
-                        match_mmss = re.search(r'(\d+):(\d+)', reply.text)
-                        if match_mmss:
-                            minutes = int(match_mmss.group(1))
-                            seconds = int(match_mmss.group(2))
-                            cooldown = (minutes * 60) + seconds + 2
-            except Exception as e:
-                print(f"[MEOW] Read error: {e}")
                 
             await asyncio.sleep(cooldown)
         except asyncio.CancelledError:
@@ -46,6 +35,14 @@ async def meow_loop_wrapper(client, chat_id):
 
 def register(client) -> None:
     p = config.PREFIX
+
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}تنظیم زمان میویی (\d+:\d+)$"))
+    async def set_meow_time(event: events.NewMessage.Event) -> None:
+        me = await client.get_me()
+        interval = event.pattern_match.group(1).strip()
+        from bot.database import set_meow_interval
+        await set_meow_interval(me.id, interval)
+        await event.edit(f"✅ زمان میو کردن شما روی **{interval}** (دقیقه:ثانیه) تنظیم شد.")
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}تنظیم میویی$"))
     async def set_meow_target(event: events.NewMessage.Event) -> None:
@@ -62,9 +59,10 @@ def register(client) -> None:
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}میو روشن$"))
     async def start_meow(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
-        from bot.database import get_meow_target_db, set_meow_active
+        from bot.database import get_meow_target_db, set_meow_active, get_meow_interval
         
         target = await get_meow_target_db(me.id)
+        interval = await get_meow_interval(me.id)
         if not target or not target.get('chat_id'):
             await event.edit("⚠️ **خطا:** لطفاً ابتدا چت مقصد را با دستور `.تنظیم میویی` مشخص کنید.")
             return
@@ -75,9 +73,9 @@ def register(client) -> None:
             MEOW_TASKS[chat_id].cancel()
             del MEOW_TASKS[chat_id]
             
-        await event.edit(f"✅ شروع مجدد میو کردن در چت **{target['chat_title']}**...")
+        await event.edit(f"✅ شروع مجدد میو کردن در چت **{target['chat_title']}** با تایم **{interval}**...")
         
-        MEOW_TASKS[chat_id] = asyncio.create_task(meow_loop_wrapper(client, chat_id))
+        MEOW_TASKS[chat_id] = asyncio.create_task(meow_loop_wrapper(client, chat_id, interval))
         await set_meow_active(me.id, 1)
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}میو خاموش$"))

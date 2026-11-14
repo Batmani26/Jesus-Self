@@ -342,13 +342,17 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         except Exception as e:
             target_text = f"⚠️ خطا در خواندن مقصد: {e}"
         
+        from bot.database import get_meow_interval
+        interval = await get_meow_interval(callback.from_user.id)
         info_text = (
             "🤖 <b>میو خودکار</b>\n\n"
             "<blockquote>با استفاده از این قابلیت، می‌توانید در گروه‌هایی که ربات میویی وجود دارد، به صورت خودکار کلمه «میو» را ارسال کنید تا امتیاز جمع کنید.</blockquote>\n\n"
-            f"{target_text}\n\n"
+            f"{target_text}\n"
+            f"⏱ تایم تنظیم شده: <b>{interval}</b> (دقیقه:ثانیه)\n\n"
             "<b>مراحل:</b>\n"
             "1️⃣ ابتدا در گروه مورد نظر دستور <code>.تنظیم میویی</code> را بزنید.\n"
-            "2️⃣ سپس دستور <code>.میو روشن</code> را بزنید.\n\n"
+            "2️⃣ تایم کول‌داون خود را تنظیم کنید: <code>.تنظیم زمان میویی 4:20</code>\n"
+            "3️⃣ سپس دستور <code>.میو روشن</code> را بزنید.\n\n"
             "<b>دستور توقف:</b>\n"
             "<code>.میو خاموش</code>\n\n"
             "👇 برای کپی، روی هر دستور کلیک کنید."

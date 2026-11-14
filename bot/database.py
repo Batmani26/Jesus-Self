@@ -108,6 +108,18 @@ async def get_all_meow_active_users():
     async with pool.acquire() as conn:
         return await conn.fetch('SELECT user_id, meow_chat_id, meow_chat_title FROM users WHERE meow_active = 1')
 
+async def set_meow_interval(user_id, interval_str):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_interval TEXT')
+        await conn.execute('UPDATE users SET meow_interval = $1 WHERE user_id = $2', interval_str, user_id)
+
+async def get_meow_interval(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow('SELECT meow_interval FROM users WHERE user_id = $1', user_id)
+        return row['meow_interval'] if row and row['meow_interval'] else "4:10"
+
 async def set_meow_target_db(user_id, chat_id, chat_title):
     await init_db()
     async with pool.acquire() as conn:
