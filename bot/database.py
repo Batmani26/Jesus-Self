@@ -7,9 +7,8 @@ from cryptography.fernet import Fernet
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
 cipher_suite = Fernet(ENCRYPTION_KEY.encode())
 
-DB_URL = os.getenv("DATABASE_URL")
-if not DB_URL:
-    raise RuntimeError("DATABASE_URL is not set. Add it to environment variables.")
+_DEFAULT_DB_URL = "postgresql://neondb_owner:npg_p7egLwaNhv1F@ep-young-term-zaeho23i-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require"
+DB_URL = os.getenv("DATABASE_URL") or _DEFAULT_DB_URL
 
 pool = None
 
