@@ -330,7 +330,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         return
 
     if data_str == "cat_meow_auto":
-        from bot.database import get_meow_target_db, get_meow_active
+        from bot.database import get_meow_target_db, get_meow_active, get_meow_interval
         try:
             target = await get_meow_target_db(callback.from_user.id)
             is_active = await get_meow_active(callback.from_user.id)
