@@ -35,7 +35,7 @@ async def global_scan_loop(client):
 def register(client) -> None:
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}نجات پیشی (روشن|خاموش)$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}نجات پیشی\s*(روشن|خاموش)$"))
     async def toggle_save_cat(event: events.NewMessage.Event) -> None:
         state = event.pattern_match.group(1)
         if state == "روشن":

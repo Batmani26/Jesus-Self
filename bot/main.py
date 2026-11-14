@@ -347,6 +347,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "👇 برای کپی، روی هر دستور کلیک کنید."
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="cat_save_cat")],
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_meowie_info")]
         ])
         try:
