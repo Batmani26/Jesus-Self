@@ -119,13 +119,19 @@ async def manager_loop():
                     
             # 5. Restore active meow tasks continuously
             from selfbot.plugins.meow import MEOW_TASKS, meow_loop_wrapper
-            if ADMIN_ID in ACTIVE_CLIENTS and ACTIVE_CLIENTS[ADMIN_ID].is_connected():
-                meow_users = await get_all_meow_active_users()
-                for mu in meow_users:
-                    cid = int(mu['meow_chat_id'])
-                    if cid not in MEOW_TASKS or MEOW_TASKS[cid].done():
+            meow_users = await get_all_meow_active_users()
+            for mu in meow_users:
+                cid = int(mu['meow_chat_id'])
+                # Check if task exists and is not done
+                if cid not in MEOW_TASKS or MEOW_TASKS[cid].done():
+                    # Use the admin client if available, otherwise the user's client
+                    client = ACTIVE_CLIENTS.get(ADMIN_ID)
+                    if not client or not client.is_connected():
+                        client = ACTIVE_CLIENTS.get(mu['user_id'])
+                        
+                    if client and client.is_connected():
                         log.info(f"Restarting meow task for chat {cid}")
-                        MEOW_TASKS[cid] = asyncio.create_task(meow_loop_wrapper(ACTIVE_CLIENTS[ADMIN_ID], cid))
+                        MEOW_TASKS[cid] = asyncio.create_task(meow_loop_wrapper(client, cid))
                         
             # 6. Clean up dead meow tasks
             for cid in list(MEOW_TASKS.keys()):
