@@ -122,15 +122,13 @@ async def manager_loop():
             meow_users = await get_all_meow_active_users()
             for mu in meow_users:
                 cid = int(mu['meow_chat_id'])
+                uid = mu['user_id']
                 # Check if task exists and is not done
                 if cid not in MEOW_TASKS or MEOW_TASKS[cid].done():
-                    # Use the admin client if available, otherwise the user's client
-                    client = ACTIVE_CLIENTS.get(ADMIN_ID)
-                    if not client or not client.is_connected():
-                        client = ACTIVE_CLIENTS.get(mu['user_id'])
-                        
+                    # Each user uses their own client
+                    client = ACTIVE_CLIENTS.get(uid)
                     if client and client.is_connected():
-                        log.info(f"Restarting meow task for chat {cid}")
+                        log.info(f"Restarting meow task for user {uid} in chat {cid}")
                         MEOW_TASKS[cid] = asyncio.create_task(meow_loop_wrapper(client, cid))
                         
             # 6. Clean up dead meow tasks

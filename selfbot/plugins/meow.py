@@ -49,29 +49,28 @@ def register(client) -> None:
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}تنظیم میویی$"))
     async def set_meow_target(event: events.NewMessage.Event) -> None:
+        me = await client.get_me()
         chat_id = event.chat_id
         chat = await event.get_chat()
         chat_title = getattr(chat, 'title', 'چت خصوصی')
         
         from bot.database import set_meow_target_db
-        from bot.main import ADMIN_ID
-        await set_meow_target_db(ADMIN_ID, str(chat_id), chat_title)
+        await set_meow_target_db(me.id, str(chat_id), chat_title)
         
         await event.edit(f"✅ چت **{chat_title}** به عنوان مقصد میو کردن تنظیم شد.\n\nحالا برای شروع، دستور `.میو روشن` را بزنید.", parse_mode="md")
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}میو روشن$"))
     async def start_meow(event: events.NewMessage.Event) -> None:
-        from bot.database import get_meow_target_db
-        from bot.main import ADMIN_ID
+        me = await client.get_me()
+        from bot.database import get_meow_target_db, set_meow_active
         
-        target = await get_meow_target_db(ADMIN_ID)
+        target = await get_meow_target_db(me.id)
         if not target or not target.get('chat_id'):
             await event.edit("⚠️ **خطا:** لطفاً ابتدا چت مقصد را با دستور `.تنظیم میویی` مشخص کنید.")
             return
             
         chat_id = int(target['chat_id'])
         
-        # If a task exists, cancel it to start a fresh one
         if chat_id in MEOW_TASKS:
             MEOW_TASKS[chat_id].cancel()
             del MEOW_TASKS[chat_id]
@@ -79,20 +78,19 @@ def register(client) -> None:
         await event.edit(f"✅ شروع مجدد میو کردن در چت **{target['chat_title']}**...")
         
         MEOW_TASKS[chat_id] = asyncio.create_task(meow_loop_wrapper(client, chat_id))
-        from bot.database import set_meow_active
-        await set_meow_active(ADMIN_ID, 1)
+        await set_meow_active(me.id, 1)
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}میو خاموش$"))
     async def stop_meow(event: events.NewMessage.Event) -> None:
-        from bot.main import ADMIN_ID
+        me = await client.get_me()
         from bot.database import set_meow_active
         
         chat_id = event.chat_id
         if chat_id in MEOW_TASKS:
             MEOW_TASKS[chat_id].cancel()
             del MEOW_TASKS[chat_id]
-            await set_meow_active(ADMIN_ID, 0)
+            await set_meow_active(me.id, 0)
             await event.edit("❌ میو کردن در این چت متوقف شد.")
         else:
-            await set_meow_active(ADMIN_ID, 0)
+            await set_meow_active(me.id, 0)
             await event.edit("⚠️ میو کردن در این چت روشن نیست.")
