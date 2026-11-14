@@ -23,17 +23,14 @@ def register(client) -> None:
         if not active:
             return
             
-        # Check if the message is from Meowie bot and contains the rescue text
-        if event.sender_id and event.message.reply_markup:
-            text = event.text or ""
-            if "🐈 یه پیشی خیابونی" in text or "نجات پیشی خیابونی" in text:
-                # Find the button with 'نجات'
-                for row in event.message.reply_markup.rows:
-                    for button in row.buttons:
-                        if "نجات" in button.text:
-                            try:
-                                await button.click()
-                                print(f"[SAVE CAT] Clicked rescue button in chat {event.chat_id}")
-                            except Exception as e:
-                                print(f"[SAVE CAT ERROR] {e}")
-                            return
+        # Check if the message has an inline keyboard with a rescue button
+        if event.message.reply_markup:
+            for row in event.message.reply_markup.rows:
+                for button in row.buttons:
+                    if "نجات" in button.text:
+                        try:
+                            await button.click()
+                            print(f"[SAVE CAT] Clicked rescue button in chat {event.chat_id}")
+                        except Exception as e:
+                            print(f"[SAVE CAT ERROR] {e}")
+                        return
