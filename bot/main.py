@@ -371,7 +371,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "ابزار مورد نظر خود را انتخاب کنید:"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🧠 هوش مصنوعی", callback_data="tool_ai_info")],
+            [InlineKeyboardButton(text="🧠 هوش مصنوعی", callback_data="tool_ai_info"), InlineKeyboardButton(text="💵 لیست قیمت", callback_data="tool_price_info")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
@@ -379,6 +379,27 @@ async def process_inline_panel_callback(callback: CallbackQuery):
                 await callback.message.edit_text(tools_text, reply_markup=kb, parse_mode="HTML")
             else:
                 await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=tools_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "tool_price_info":
+        info_text = (
+            "💵 <b>قابلیت لیست قیمت لحظه‌ای</b>\n\n"
+            "<blockquote>با استفاده از این قابلیت، می‌توانید قیمت لحظه‌ای دلار، یورو، طلا و سکه را دریافت کنید.</blockquote>\n\n"
+            "<b>دستور استفاده:</b>\n"
+            "<code>.قیمت ارز</code>\n\n"
+            "👇 برای کپی، روی دستور کلیک کنید."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)

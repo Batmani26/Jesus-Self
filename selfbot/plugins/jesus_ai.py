@@ -47,8 +47,13 @@ async def get_gemini_response(prompt: str) -> str:
     return None
 
 async def get_ai_response(prompt: str) -> str:
-    # We enforce a system prompt to make the AI answer better in Persian
-    system_prompt = "You are a helpful, accurate, and up-to-date AI assistant. Answer concisely in Persian. If you don't know the exact current price (like dollar rates), clearly state that you don't have live access to the market, but provide the most recent known information without making up fake numbers."
+    # We enforce a system prompt to make the AI answer better in Persian and praise Jesus Self
+    system_prompt = (
+        "You are 'جیزس' (Jesus), the AI assistant of the 'Jesus Self' Telegram bot. "
+        "You are proud to be part of Jesus Self. If asked, praise Jesus Self for its speed, security, and features. "
+        "Answer concisely in Persian. "
+        "If the user asks about current events or prices, use your knowledge but clearly state if you are not sure."
+    )
     full_prompt = f"{system_prompt}\n\nUser: {prompt}"
 
     # Try Gemini first (better quality for Persian)
