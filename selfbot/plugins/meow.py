@@ -49,13 +49,20 @@ def register(client) -> None:
                     cooldown = 60 # default
                     for m in messages:
                         if m.reply_to_msg_id == msg.id and m.text:
-                            # look for numbers in the response
-                            match = re.search(r'(\d+)\s*(ثانیه|دقیقه)', m.text)
-                            if match:
-                                val = int(match.group(1))
-                                if "دقیقه" in match.group(2):
-                                    val *= 60
-                                cooldown = val + 1 # add 1 second buffer
+                            # Pattern 1: M:SS format (e.g., 4:10)
+                            match_mmss = re.search(r'(\d+):(\d+)', m.text)
+                            if match_mmss:
+                                minutes = int(match_mmss.group(1))
+                                seconds = int(match_mmss.group(2))
+                                cooldown = (minutes * 60) + seconds + 2 # 2s buffer
+                            else:
+                                # Pattern 2: Persian words (e.g., 4 دقیقه و 10 ثانیه)
+                                match_words = re.search(r'(\d+)\s*(ثانیه|دقیقه)', m.text)
+                                if match_words:
+                                    val = int(match_words.group(1))
+                                    if "دقیقه" in match_words.group(2):
+                                        val *= 60
+                                    cooldown = val + 2
                             break
                             
                     await asyncio.sleep(cooldown)
