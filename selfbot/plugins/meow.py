@@ -6,6 +6,33 @@ from selfbot.config import config
 
 MEOW_TASKS = {}
 
+async def meow_loop_wrapper(client, chat_id):
+    while True:
+        try:
+            msg = await client.send_message(chat_id, "میو")
+            await asyncio.sleep(2)
+            cooldown = 60
+            messages = await client.get_messages(chat_id, limit=5)
+            for m in messages:
+                if m.text and ("بعد از" in m.text or "باید" in m.text):
+                    match_mmss = re.search(r'(\d+):(\d+)', m.text)
+                    if match_mmss:
+                        minutes = int(match_mmss.group(1))
+                        seconds = int(match_mmss.group(2))
+                        cooldown = (minutes * 60) + seconds + 2
+                    else:
+                        match_words = re.search(r'(\d+)\s*(ثانیه|دقیقه)', m.text)
+                        if match_words:
+                            val = int(match_words.group(1))
+                            if "دقیقه" in match_words.group(2):
+                                val *= 60
+                            cooldown = val + 2
+                    break
+            await asyncio.sleep(cooldown)
+        except Exception as e:
+            print(f"Meow error: {e}")
+            await asyncio.sleep(10)
+
 def register(client) -> None:
     p = config.PREFIX
 
@@ -38,43 +65,21 @@ def register(client) -> None:
             
         await event.edit(f"✅ شروع میو کردن در چت **{target['chat_title']}**...")
         
-        async def meow_loop():
-            while True:
-                try:
-                    msg = await client.send_message(chat_id, "میو")
-                    await asyncio.sleep(2) # Wait for bot to reply
-                    
-                    cooldown = 60 # default
-                    messages = await client.get_messages(chat_id, limit=5)
-                    for m in messages:
-                        if m.text and ("بعد از" in m.text or "باید" in m.text):
-                            match_mmss = re.search(r'(\d+):(\d+)', m.text)
-                            if match_mmss:
-                                minutes = int(match_mmss.group(1))
-                                seconds = int(match_mmss.group(2))
-                                cooldown = (minutes * 60) + seconds + 2
-                            else:
-                                match_words = re.search(r'(\d+)\s*(ثانیه|دقیقه)', m.text)
-                                if match_words:
-                                    val = int(match_words.group(1))
-                                    if "دقیقه" in match_words.group(2):
-                                        val *= 60
-                                    cooldown = val + 2
-                            break
-                            
-                    await asyncio.sleep(cooldown)
-                except Exception as e:
-                    print(f"Meow error: {e}")
-                    await asyncio.sleep(10)
-                    
-        MEOW_TASKS[chat_id] = asyncio.create_task(meow_loop())
+        MEOW_TASKS[chat_id] = asyncio.create_task(meow_loop_wrapper(client, chat_id))
+        from bot.database import set_meow_active
+        await set_meow_active(ADMIN_ID, 1)
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}میو خاموش$"))
     async def stop_meow(event: events.NewMessage.Event) -> None:
+        from bot.main import ADMIN_ID
+        from bot.database import set_meow_active
+        
         chat_id = event.chat_id
         if chat_id in MEOW_TASKS:
             MEOW_TASKS[chat_id].cancel()
             del MEOW_TASKS[chat_id]
+            await set_meow_active(ADMIN_ID, 0)
             await event.edit("❌ میو کردن در این چت متوقف شد.")
         else:
+            await set_meow_active(ADMIN_ID, 0)
             await event.edit("⚠️ میو کردن در این چت روشن نیست.")

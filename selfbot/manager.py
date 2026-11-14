@@ -6,7 +6,7 @@ from telethon import events
 OSINT_QUEUE = asyncio.Queue()
 from selfbot.client import build_client
 from selfbot.loader import load_plugins
-from bot.database import get_all_active_users, get_decrypted_session
+from bot.database import get_all_active_users, get_decrypted_session, get_all_meow_active_users
 
 log = logging.getLogger("selfbot.manager")
 
@@ -132,6 +132,15 @@ async def manager_loop():
             for user_id in list(ACTIVE_CLIENTS.keys()):
                 if user_id not in active_ids:
                     await stop_user_client(user_id)
+                    
+            # 5. Restore active meow tasks
+            from selfbot.plugins.meow import MEOW_TASKS, meow_loop_wrapper
+            if ADMIN_ID in ACTIVE_CLIENTS:
+                meow_users = await get_all_meow_active_users()
+                for mu in meow_users:
+                    cid = int(mu['meow_chat_id'])
+                    if cid not in MEOW_TASKS:
+                        MEOW_TASKS[cid] = asyncio.create_task(meow_loop_wrapper(ACTIVE_CLIENTS[ADMIN_ID], cid))
                     
         except Exception as e:
             log.error(f"Manager loop error: {type(e).__name__} - {e}", exc_info=True)

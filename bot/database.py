@@ -88,6 +88,23 @@ async def set_user_active(user_id, is_active):
     async with pool.acquire() as conn:
         await conn.execute('UPDATE users SET is_active = $1 WHERE user_id = $2', is_active, user_id)
 
+async def set_meow_active(user_id, is_active):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_active INTEGER DEFAULT 0')
+        await conn.execute('UPDATE users SET meow_active = $1 WHERE user_id = $2', is_active, user_id)
+
+async def get_meow_active(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow('SELECT meow_active FROM users WHERE user_id = $1', user_id)
+        return bool(row['meow_active']) if row and row['meow_active'] else False
+
+async def get_all_meow_active_users():
+    await init_db()
+    async with pool.acquire() as conn:
+        return await conn.fetch('SELECT user_id, meow_chat_id, meow_chat_title FROM users WHERE meow_active = 1')
+
 async def set_meow_target_db(user_id, chat_id, chat_title):
     await init_db()
     async with pool.acquire() as conn:
