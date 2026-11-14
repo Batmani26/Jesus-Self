@@ -8,22 +8,20 @@ from bot.database import get_yaqoot
 def register(client) -> None:
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل$"))
     async def panel_cmd(event: events.NewMessage.Event) -> None:
-        print(f"[DEBUG] .پنل triggered by {event.sender_id}")
         me = await event.client.get_me()
-        balance = await get_yaqoot(me.id)
-        
-        if balance <= 0:
-            await event.edit("❌ **موجودی یاقوت شما به پایان رسیده است.**\n\nابتدا حساب خود را شارژ کنید.")
-            return
-            
         try:
-            results = await client.inline_query('SelfJesusBot', 'panel')
-            await results[0].click(event.chat_id)
-            await event.delete()
-        except Exception as e:
-            await event.edit(f"❌ خطا در باز کردن پنل: {e}")
+            balance = await get_yaqoot(me.id)
+        except Exception:
+            balance = 0
+        buttons = [
+            [Button.inline("وضعیت سلف‌بات", b"feat_status"), Button.inline("ذخیره‌ساز", b"feat_saver")],
+            [Button.inline("ویس", b"feat_voice"), Button.inline("موزیک", b"feat_music")],
+            [Button.inline("بستن پنل", b"feat_close")],
+        ]
+        text = f"🎛 **پنل مدیریت**\n\n💰 موجودی یاقوت: **{balance}**\n\nیک گزینه را انتخاب کنید:"
+        await event.reply(text, buttons=buttons, parse_mode="md")
 
     @client.on(events.CallbackQuery())
     async def panel_callback(event: events.CallbackQuery.Event) -> None:
