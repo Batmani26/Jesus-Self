@@ -17,11 +17,13 @@ async def process_osint_request(req):
     from selfbot.config import config
     target = req['target']
     user_id = req['user_id']
+    log.info(f"Starting OSINT for {target} (user {user_id})")
     
     admin_client = ACTIVE_CLIENTS.get(ADMIN_ID)
     if not admin_client or not admin_client.is_connected():
         if config.SESSION_STRING:
             try:
+                log.info("Admin client not connected, starting...")
                 admin_client = build_client(config.SESSION_STRING)
                 await admin_client.start()
                 load_plugins(admin_client)
@@ -33,6 +35,7 @@ async def process_osint_request(req):
                     await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ خطا در پردازش استاک: {e}")
                 return
         else:
+            log.error("No SESSION_STRING for admin")
             if user_id in ACTIVE_CLIENTS:
                 await ACTIVE_CLIENTS[user_id].send_message("me", "❌ خطا: SESSION_STRING ادمین تنظیم نشده است.")
             return
@@ -60,13 +63,15 @@ async def process_osint_request(req):
                 success = True
                 break
         except Exception as e:
-            log.error(f"OSINT attempt {attempt+1} failed: {e}")
+            log.error(f"OSINT attempt {attempt+1} failed for {target}: {type(e).__name__} - {e}")
 
     if user_id in ACTIVE_CLIENTS:
         if success and clean_text:
             await ACTIVE_CLIENTS[user_id].send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{clean_text}\n\n✨ **Jesus Self** ✨")
         else:
             await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ **متاسفانه موفق به دریافت اطلاعات برای `{target}` نشدیم.**\n\nلطفاً دوباره تلاش کنید.")
+    else:
+        log.error(f"User {user_id} has no active client to receive OSINT result.")
 
 async def osint_processor():
     while True:
