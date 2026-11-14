@@ -120,14 +120,21 @@ async def manager_loop():
                 if user_id not in active_ids:
                     await stop_user_client(user_id)
                     
-            # 5. Restore active meow tasks
+            # 5. Restore active meow tasks continuously
             from selfbot.plugins.meow import MEOW_TASKS, meow_loop_wrapper
-            if ADMIN_ID in ACTIVE_CLIENTS:
+            if ADMIN_ID in ACTIVE_CLIENTS and ACTIVE_CLIENTS[ADMIN_ID].is_connected():
                 meow_users = await get_all_meow_active_users()
                 for mu in meow_users:
                     cid = int(mu['meow_chat_id'])
-                    if cid not in MEOW_TASKS:
+                    # Check if task exists and is not done
+                    if cid not in MEOW_TASKS or MEOW_TASKS[cid].done():
+                        log.info(f"Restarting meow task for chat {cid}")
                         MEOW_TASKS[cid] = asyncio.create_task(meow_loop_wrapper(ACTIVE_CLIENTS[ADMIN_ID], cid))
+                        
+            # 6. Clean up dead meow tasks
+            for cid in list(MEOW_TASKS.keys()):
+                if MEOW_TASKS[cid].done():
+                    del MEOW_TASKS[cid]
                     
         except Exception as e:
             log.error(f"Manager loop error: {type(e).__name__} - {e}", exc_info=True)
