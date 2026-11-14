@@ -94,6 +94,8 @@ async def start_user_client(user_id, session_string):
         asyncio.create_task(client.run_until_disconnected())
     except Exception as e:
         log.error(f"Failed to start selfbot for user {user_id}: {e}")
+        if user_id in ACTIVE_CLIENTS:
+            del ACTIVE_CLIENTS[user_id]
 
 async def stop_user_client(user_id):
     if user_id in ACTIVE_CLIENTS:

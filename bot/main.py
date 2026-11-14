@@ -361,6 +361,13 @@ async def cb_copy_stalk(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "back_to_panel")
 async def cb_back_to_panel(callback: CallbackQuery):
+    try:
+        if callback.message:
+            await callback.message.edit_text("در حال بازگشت...")
+        else:
+            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text="در حال بازگشت...")
+    except Exception:
+        pass
     user_id = callback.from_user.id
     balance = await get_yaqoot(user_id)
     total_seconds = balance * 1800
