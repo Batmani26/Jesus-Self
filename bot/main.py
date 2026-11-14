@@ -317,6 +317,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🤖 میو خودکار", callback_data="cat_meow_auto")],
+            [InlineKeyboardButton(text="🐈 نجات پیشی", callback_data="cat_save_cat")],
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_games")]
         ])
         try:
@@ -324,6 +325,28 @@ async def process_inline_panel_callback(callback: CallbackQuery):
                 await callback.message.edit_text(meowie_text, reply_markup=kb, parse_mode="HTML")
             else:
                 await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=meowie_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "cat_save_cat":
+        info_text = (
+            "🐈 <b>نجات پیشی</b>\n\n"
+            "<blockquote>با فعال کردن این قابلیت، سلف‌بات به صورت خودکار روی دکمه «نجات پیشی» در پیام‌های ربات میویی کلیک می‌کند تا گربه‌ها را نجات دهد.</blockquote>\n\n"
+            "<b>دستورات:</b>\n"
+            "<code>.نجات پیشی روشن</code> (برای شروع)\n"
+            "<code>.نجات پیشی خاموش</code> (برای توقف)\n\n"
+            "👇 برای کپی، روی هر دستور کلیک کنید."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_meowie_info")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
