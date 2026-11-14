@@ -1,6 +1,7 @@
 from telethon import events
 from telethon.tl.custom import Button
 from selfbot.config import config
+import re
 from bot.database import get_yaqoot, get_meow_target_db
 
 def _b(t, d):
@@ -20,7 +21,8 @@ async def _main_menu(event, balance):
         [_b("بروزرسانی", "refresh_panel"), _b("بستن پنل", "feat_close")],
     ]
     text = f"پنل مدیریت\n\n💰 موجودی یاقوت: **{balance}**"
-    await event.reply(text, buttons=kb, parse_mode="md")
+    target = event.message if hasattr(event, "message") and event.message else event
+    await target.respond(text, buttons=kb, parse_mode="md")
 
 
 async def _meowie_menu(event):
@@ -30,12 +32,14 @@ async def _meowie_menu(event):
         [_b("ماهیگیری روشن", "fishing_on"), _b("ماهیگیری خاموش", "fishing_off")],
         [_b("بازگشت", "refresh_panel")],
     ]
-    await event.reply("بخش میویی", buttons=kb)
+    target = event.message if hasattr(event, "message") and event.message else event
+    target = event.message if hasattr(event, "message") and event.message else event
+    await target.respond("بخش میویی", buttons=kb)
 
 def register(client) -> None:
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\\{p}پنل$"))
+    @client.on(events.NewMessage(outgoing=True, pattern="^" + re.escape(p) + "پنل$"))
     async def panel_cmd(event: events.NewMessage.Event) -> None:
         me = await event.client.get_me()
         try:
@@ -62,7 +66,7 @@ def register(client) -> None:
                 await event.delete()
             except Exception:
                 pass
-            await _main_menu(event, balance)
+            await _main_menu(event.message, balance)
         elif data == "cat_meowie_info":
             await _meowie_menu(event)
         elif data in ("cat_games","cat_tools","cat_fun","cat_cheat","cat_security"):
