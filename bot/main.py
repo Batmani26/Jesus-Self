@@ -172,7 +172,10 @@ async def refresh_inline_panel(callback: CallbackQuery):
             await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="Markdown")
         await callback.answer("✅ پنل بروزرسانی شد!")
     except Exception as e:
-        await callback.answer(f"❌ خطا در بروزرسانی: {e}", show_alert=True)
+        if "message is not modified" in str(e).lower():
+            await callback.answer("پنل از قبل به‌روز است.", show_alert=True)
+        else:
+            await callback.answer(f"❌ خطا در بروزرسانی: {e}", show_alert=True)
 
 @dp.callback_query(F.data.startswith("cat_"))
 async def process_inline_panel_callback(callback: CallbackQuery):
@@ -557,7 +560,10 @@ async def cb_refresh_manage(callback: CallbackQuery):
             await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="HTML")
         await callback.answer("✅ بروزرسانی شد!")
     except Exception as e:
-        await callback.answer(f"خطا: {e}", show_alert=True)
+        if "message is not modified" in str(e).lower():
+            await callback.answer("اطلاعات از قبل به‌روز است.", show_alert=True)
+        else:
+            await callback.answer(f"خطا: {e}", show_alert=True)
 
 @dp.message(F.text == "👤 حساب کاربری")
 async def cb_account(message: Message):
