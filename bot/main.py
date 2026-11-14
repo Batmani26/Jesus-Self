@@ -14,7 +14,7 @@ from aiogram import F
 from bot.database import add_user, get_user, set_user_phone, save_session, get_yaqoot, add_yaqoot, get_all_active_users, deduct_yaqoot, deactivate_user, set_user_active
 from bot.login import send_code, verify_code, verify_password
 
-BOT_TOKEN = "9117892584:AAHF4j8MgWhJdXCmXIGBQfJk2OMVnQjWNhs"
+BOT_TOKEN = "9117892584:AAGiqvPixotrg5HF-GI5STZ0gZ79oXvAISE"
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
