@@ -4,43 +4,35 @@ from telethon import events
 from selfbot.config import config
 
 async def get_live_prices():
-    # We will use a public API that aggregates tgju data (or similar)
-    url = "https://api.tgju.org/v1/market/indicator/summary-table-data/price_dollar_rl"
-    # For gold and other currencies, we can fetch from a known public source
-    # Since tgju doesn't have a single JSON for all, I'll use a community API
-    url_all = "https://call1.tgju.org/ajax.json"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    text = "💵 **قیمت‌های لحظه‌ای بازار:**\n\n"
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url_all, timeout=15) as resp:
+        async with aiohttp.ClientSession(headers=headers) as session:
+            # 1. Fetch Dollar from Nobitex
+            async with session.get("https://api.nobitex.ir/v2/orderbook/USDTIRT", timeout=10) as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    # tgju ajax.json returns a complex dict. We need to extract key values.
-                    # The keys are like 'price_dollar_rl', 'price_eur', 'geram24' (gold 18k), etc.
-                    current = data.get('current', {})
+                    last_trade = data.get('lastTradePrice', 0)
+                    dollar_toman = int(float(last_trade) / 10)
+                    text += f"🇺🇸 دلار: {dollar_toman:,} تومان\n"
+
+            # 2. Fetch Gold and Euro from Bonbast (scraping or public json)
+            async with session.get("https://www.bonbast.com/json", timeout=10) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    # Bonbast json keys
+                    euro = data.get('eur', {}).get('value', 0)
+                    gold18 = data.get('gol18', {}).get('value', 0)
+                    gold24 = data.get('gol24', {}).get('value', 0)
+                    emami = data.get('sekke', {}).get('value', 0)
                     
-                    def get_price(key):
-                        val = current.get(key, {}).get('p', '0')
-                        try:
-                            return f"{int(float(val)):,} تومان"
-                        except:
-                            return "نامشخص"
-                            
-                    dollar = get_price('price_dollar_rl')
-                    euro = get_price('price_eur')
-                    gold18 = get_price('geram18')
-                    gold24 = get_price('geram24')
-                    emami = get_price('sekee')
+                    text += f"🇪🇺 یورو: {euro:,} تومان\n"
+                    text += f"🥇 طلا ۱۸ عیار: {gold18:,} تومان\n"
+                    text += f"🥇 طلا ۲۴ عیار: {gold24:,} تومان\n"
+                    text += f"🪙 سکه امامی: {emami:,} تومان\n"
                     
-                    text = (
-                        "💵 **قیمت‌های لحظه‌ای بازار:**\n\n"
-                        f"🇺🇸 دلار: {dollar}\n"
-                        f"🇪🇺 یورو: {euro}\n"
-                        f"🥇 طلا ۱۸ عیار (گرم): {gold18}\n"
-                        f"🥇 طلا ۲۴ عیار (گرم): {gold24}\n"
-                        f"🪙 سکه امامی: {emami}\n\n"
-                        "📊 منبع: TGJU"
-                    )
-                    return text
+        text += "\n📊 منبع: نوبیتکس و بون‌بست"
+        return text
     except Exception as e:
         print(f"Currency error: {e}")
     return "❌ خطا در دریافت قیمت‌ها."
