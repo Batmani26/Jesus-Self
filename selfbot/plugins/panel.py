@@ -21,8 +21,7 @@ async def _main_menu(event, balance):
         [_b("بروزرسانی", "refresh_panel"), _b("بستن پنل", "feat_close")],
     ]
     text = f"پنل مدیریت\n\n💰 موجودی یاقوت: **{balance}**"
-    target = event.message if hasattr(event, "message") and event.message else event
-    await target.respond(text, buttons=kb, parse_mode="md")
+    await event.client.send_message(event.chat_id, text, buttons=kb, parse_mode="md")
 
 
 async def _meowie_menu(event):
@@ -32,9 +31,7 @@ async def _meowie_menu(event):
         [_b("ماهیگیری روشن", "fishing_on"), _b("ماهیگیری خاموش", "fishing_off")],
         [_b("بازگشت", "refresh_panel")],
     ]
-    target = event.message if hasattr(event, "message") and event.message else event
-    target = event.message if hasattr(event, "message") and event.message else event
-    await target.respond("بخش میویی", buttons=kb)
+    await event.client.send_message(event.chat_id, "بخش میویی", buttons=kb)
 
 def register(client) -> None:
     p = config.PREFIX
@@ -47,7 +44,7 @@ def register(client) -> None:
         except Exception:
             balance = 0
         if balance <= 0:
-            await event.reply("موجودی یاقوت شما به پایان رسیده است. ابتدا شارژ کنید.")
+            await event.client.send_message(event.chat_id, "موجودی یاقوت شما به پایان رسیده است. ابتدا شارژ کنید.")
             return
         await _main_menu(event, balance)
 
@@ -66,7 +63,7 @@ def register(client) -> None:
                 await event.delete()
             except Exception:
                 pass
-            await _main_menu(event.message, balance)
+            await _main_menu(event, balance)
         elif data == "cat_meowie_info":
             await _meowie_menu(event)
         elif data in ("cat_games","cat_tools","cat_fun","cat_cheat","cat_security"):
