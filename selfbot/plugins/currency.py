@@ -14,24 +14,30 @@ async def get_live_prices():
                     data = await resp.json()
                     last_trade = data.get('lastTradePrice', 0)
                     dollar_toman = int(float(last_trade) / 10)
-                    text += f"🇺🇸 دلار: {dollar_toman:,} تومان\n"
+                    text += f"🇺🇸 دلار (تتر): {dollar_toman:,} تومان\n"
+                else:
+                    text += "🇺🇸 دلار: نامشخص\n"
 
-            # 2. Fetch Gold and Euro from Bonbast (scraping or public json)
-            async with session.get("https://www.bonbast.com/json", timeout=10) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    # Bonbast json keys
+            # 2. Fetch Gold and Euro from TGJU (using their open API)
+            tgju_url = "https://api.tgju.org/v1/market/indicator/summary-table-data"
+            # TGJU blocks some IPs, so we try another free public API for gold
+            async with session.get("https://api.navasan.ir/v1/market/price", timeout=10) as resp2:
+                if resp2.status == 200:
+                    data = await resp2.json()
+                    # Navasan API keys
                     euro = data.get('eur', {}).get('value', 0)
-                    gold18 = data.get('gol18', {}).get('value', 0)
-                    gold24 = data.get('gol24', {}).get('value', 0)
+                    gold18 = data.get('gold18', {}).get('value', 0)
+                    gold24 = data.get('gold24', {}).get('value', 0)
                     emami = data.get('sekke', {}).get('value', 0)
                     
                     text += f"🇪🇺 یورو: {euro:,} تومان\n"
                     text += f"🥇 طلا ۱۸ عیار: {gold18:,} تومان\n"
                     text += f"🥇 طلا ۲۴ عیار: {gold24:,} تومان\n"
                     text += f"🪙 سکه امامی: {emami:,} تومان\n"
+                else:
+                    text += "🥇 طلا و یورو: در دسترس نیست.\n"
                     
-        text += "\n📊 منبع: نوبیتکس و بون‌بست"
+        text += "\n📊 منبع: نوبیتکس و نوسان"
         return text
     except Exception as e:
         print(f"Currency error: {e}")
