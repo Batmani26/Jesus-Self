@@ -126,7 +126,7 @@ async def manager_loop():
                 uid = mu['user_id']
                 active_meow_ids.add(cid)
                 
-                if cid not in MEOW_TASKS or MEOW_TASKS[cid].done():
+                if cid not in MEOW_TASKS:
                     client = ACTIVE_CLIENTS.get(uid)
                     if client and client.is_connected():
                         from bot.database import get_meow_interval

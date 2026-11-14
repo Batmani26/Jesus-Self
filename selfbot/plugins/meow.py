@@ -85,10 +85,10 @@ def register(client) -> None:
         chat_id = int(target['chat_id'])
         
         if chat_id in MEOW_TASKS:
-            MEOW_TASKS[chat_id].cancel()
-            del MEOW_TASKS[chat_id]
+            await event.edit("⚠️ میو کردن در این چت از قبل روشن است.")
+            return
             
-        await event.edit(f"✅ شروع مجدد میو کردن در چت **{target['chat_title']}** با تایم **{interval}**...")
+        await event.edit(f"✅ شروع میو کردن در چت **{target['chat_title']}** با تایم **{interval}**...")
         
         MEOW_TASKS[chat_id] = asyncio.create_task(meow_loop_wrapper(client, chat_id, interval))
         await set_meow_active(me.id, 1)
