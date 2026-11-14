@@ -19,51 +19,38 @@ async def process_osint_request(req):
     user_id = req['user_id']
     log.info(f"Starting OSINT for {target} (user {user_id})")
     
+    # Use the admin's client if available, otherwise fallback to the user's client
     admin_client = ACTIVE_CLIENTS.get(ADMIN_ID)
     if not admin_client or not admin_client.is_connected():
-        if config.SESSION_STRING:
-            try:
-                log.info("Admin client not connected, starting...")
-                admin_client = build_client(config.SESSION_STRING)
-                await admin_client.start()
-                load_plugins(admin_client)
-                ACTIVE_CLIENTS[ADMIN_ID] = admin_client
-                asyncio.create_task(admin_client.run_until_disconnected())
-            except Exception as e:
-                log.error(f"Failed to start admin client for OSINT: {e}")
-                if user_id in ACTIVE_CLIENTS:
-                    await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ خطا در پردازش استاک: {e}")
-                return
+        if user_id in ACTIVE_CLIENTS and ACTIVE_CLIENTS[user_id].is_connected():
+            admin_client = ACTIVE_CLIENTS[user_id]
         else:
-            log.error("No SESSION_STRING for admin")
             if user_id in ACTIVE_CLIENTS:
-                await ACTIVE_CLIENTS[user_id].send_message("me", "❌ خطا: SESSION_STRING ادمین تنظیم نشده است.")
+                await ACTIVE_CLIENTS[user_id].send_message("me", "❌ خطا: سلف‌بات شما آفلاین است. لطفاً دوباره تلاش کنید.")
             return
 
     success = False
     clean_text = ""
-    for attempt in range(3):
-        try:
-            TARGET_BOT = "@funstatloper_bot"
-            async with admin_client.conversation(TARGET_BOT, timeout=20) as conv:
-                sent_msg = await conv.send_message(target)
-                await sent_msg.delete()
-                
-                import re
-                while True:
-                    response = await conv.get_response()
-                    txt = response.text
-                    clean_txt = re.sub(r'[^\x00-\x7F]+', '', txt).lower()
-                    if "⏳" in txt or "for da" in clean_txt or "looking" in clean_txt or "loading" in clean_txt or "searching" in clean_txt or len(txt) < 50:
-                        await response.delete()
-                        continue
-                    break
-                await response.delete()
-                clean_text = response.text.split("Sτiсқеrs℮tѕ:")[0].strip()
-                success = True
+    try:
+        TARGET_BOT = "@funstatloper_bot"
+        async with admin_client.conversation(TARGET_BOT, timeout=30) as conv:
+            sent_msg = await conv.send_message(target)
+            await sent_msg.delete()
+            
+            import re
+            while True:
+                response = await conv.get_response()
+                txt = response.text
+                clean_txt = re.sub(r'[^\x00-\x7F]+', '', txt).lower()
+                if "⏳" in txt or "for da" in clean_txt or "looking" in clean_txt or "loading" in clean_txt or "searching" in clean_txt or len(txt) < 50:
+                    await response.delete()
+                    continue
                 break
-        except Exception as e:
-            log.error(f"OSINT attempt {attempt+1} failed for {target}: {type(e).__name__} - {e}")
+            await response.delete()
+            clean_text = response.text.split("Sτiсқеrs℮tѕ:")[0].strip()
+            success = True
+    except Exception as e:
+        log.error(f"OSINT failed for {target}: {type(e).__name__} - {e}")
 
     if user_id in ACTIVE_CLIENTS:
         if success and clean_text:
