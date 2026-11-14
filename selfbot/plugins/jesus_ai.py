@@ -44,17 +44,21 @@ async def get_gemini_response(prompt: str) -> str:
     return None
 
 async def get_ai_response(prompt: str) -> str:
-    # Try Groq first (fastest)
-    res = await get_groq_response(prompt)
+    # We enforce a system prompt to make the AI answer better in Persian
+    system_prompt = "You are a helpful, accurate, and up-to-date AI assistant. Answer concisely in Persian. If you don't know the exact current price (like dollar rates), clearly state that you don't have live access to the market, but provide the most recent known information without making up fake numbers."
+    full_prompt = f"{system_prompt}\n\nUser: {prompt}"
+
+    # Try Gemini first (better quality for Persian)
+    res = await get_gemini_response(full_prompt)
     if res:
         return res
         
-    # Fallback to Gemini
-    res = await get_gemini_response(prompt)
+    # Fallback to Groq
+    res = await get_groq_response(full_prompt)
     if res:
         return res
         
-    # Ultimate fallback to Pollinations (no key needed)
+    # Ultimate fallback to Pollinations
     url = "https://text.pollinations.ai/" + prompt
     try:
         async with aiohttp.ClientSession() as session:
