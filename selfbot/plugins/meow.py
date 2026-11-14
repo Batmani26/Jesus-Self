@@ -6,43 +6,45 @@ from selfbot.config import config
 
 MEOW_TASKS = {}
 
-async def meow_loop_wrapper(client, chat_id, interval_str):
+async def meow_loop_wrapper(client, chat_id, interval_str, immediate=True):
     if not interval_str:
-        print(f"[MEOW] No interval set for {chat_id}, aborting.")
+        print(f"[MEOW] No interval for {chat_id}")
         return
-        
     try:
-        parts = interval_str.strip().split(':')
-        cooldown = (int(parts[0]) * 60) + int(parts[1])
+        parts = interval_str.strip().split(chr(58))
+        cooldown = int(parts[0]) * 60 + int(parts[1])
         if cooldown <= 0:
-            raise ValueError("Cooldown must be > 0")
+            raise ValueError(chr(99)+chr(111)+chr(111)+chr(108))
     except Exception as e:
-        print(f"[MEOW] Invalid interval '{interval_str}', aborting. Error: {e}")
+        print(f"[MEOW] Invalid interval {interval_str}: {e}")
         return
-        
-    print(f"[MEOW] Starting loop for {chat_id} with exact cooldown: {cooldown}s")
-        
+    loop = asyncio.get_event_loop()
+    next_send = loop.time() if immediate else loop.time() + cooldown
+    print(f"[MEOW] Start {chat_id} cooldown={cooldown}s")
     while True:
         try:
+            now = loop.time()
+            delay = next_send - now
+            if delay > 0:
+                await asyncio.sleep(delay)
             while not client.is_connected():
-                await asyncio.sleep(2)
-                
+                await asyncio.sleep(1)
             try:
-                await client.send_message(chat_id, "میو")
-                print(f"[MEOW] Sent meow to {chat_id}. Waiting {cooldown}s...")
+                await client.send_message(chat_id, chr(1605)+chr(1740)+chr(1608))
+                print(f"[MEOW] Sent to {chat_id}")
             except Exception as e:
-                print(f"[MEOW] Send error: {e}")
-                await asyncio.sleep(5)
+                print(f"[MEOW] Send error {e}")
+                next_send += cooldown
                 continue
-                
-            # Sleep for exactly the fixed cooldown
-            await asyncio.sleep(cooldown)
+            next_send += cooldown
+            if next_send < loop.time():
+                next_send = loop.time()
         except asyncio.CancelledError:
-            print(f"[MEOW] Task for {chat_id} cancelled.")
+            print(f"[MEOW] Task {chat_id} cancelled")
             break
         except Exception as e:
             print(f"[MEOW ERROR] {e}")
-            await asyncio.sleep(2)
+            next_send = loop.time() + cooldown
 
 def register(client) -> None:
     p = config.PREFIX
@@ -90,20 +92,23 @@ def register(client) -> None:
             
         await event.edit(f"✅ شروع میو کردن در چت **{target['chat_title']}** با تایم **{interval}**...")
         
+        for cid in list(MEOW_TASKS.keys()):
+            MEOW_TASKS[cid].cancel()
+            del MEOW_TASKS[cid]
         MEOW_TASKS[chat_id] = asyncio.create_task(meow_loop_wrapper(client, chat_id, interval))
         await set_meow_active(me.id, 1)
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}میو خاموش$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{p}میو خاموش$"))
     async def stop_meow(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
-        from bot.database import set_meow_active
-        
-        chat_id = event.chat_id
-        if chat_id in MEOW_TASKS:
-            MEOW_TASKS[chat_id].cancel()
-            del MEOW_TASKS[chat_id]
-            await set_meow_active(me.id, 0)
-            await event.edit("❌ میو کردن در این چت متوقف شد.")
+        from bot.database import set_meow_active, get_meow_target_db
+        stopped = False
+        for cid in list(MEOW_TASKS.keys()):
+            MEOW_TASKS[cid].cancel()
+            del MEOW_TASKS[cid]
+            stopped = True
+        await set_meow_active(me.id, 0)
+        if stopped:
+            await event.edit("✕ میو خاموش شد")
         else:
-            await set_meow_active(me.id, 0)
-            await event.edit("⚠️ میو کردن در این چت روشن نیست.")
+            await event.edit("⚠ میو روشن نیست")

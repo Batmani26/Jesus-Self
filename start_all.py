@@ -58,7 +58,8 @@ async def start_web_server():
     app.router.add_get('/', handle)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    import os
+    site = web.TCPSite(runner, '0.0.0.0', int(os.environ.get('PORT', 8080)))
     await site.start()
     log.info("Web server started on port 8080")
 

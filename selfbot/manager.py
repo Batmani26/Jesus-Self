@@ -153,7 +153,7 @@ async def manager_loop():
                         interval = await get_meow_interval(uid)
                         if interval:
                             log.info(f"Starting meow task for user {uid} in chat {cid} with interval {interval}")
-                            MEOW_TASKS[cid] = asyncio.create_task(meow_loop_wrapper(client, cid, interval))
+                            MEOW_TASKS[cid] = asyncio.create_task(meow_loop_wrapper(client, cid, interval, immediate=False))
                         else:
                             log.info(f"Skipping meow task for user {uid} in chat {cid}: no interval set")
                         

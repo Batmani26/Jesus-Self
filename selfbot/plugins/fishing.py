@@ -55,6 +55,9 @@ def register(client) -> None:
             return
             
         chat_id = int(target['chat_id'])
+        for cid in list(FISHING_TASKS.keys()):
+            FISHING_TASKS[cid].cancel()
+            del FISHING_TASKS[cid]
         if chat_id in FISHING_TASKS:
             await event.edit("⚠️ ماهیگیری در این چت از قبل روشن است.")
             return
@@ -66,8 +69,9 @@ def register(client) -> None:
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}ماهیگیری خاموش$"))
     async def stop_fishing(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
-        from bot.database import set_fishing_active
-        chat_id = event.chat_id
+        from bot.database import set_fishing_active, get_meow_target_db
+        _t = await get_meow_target_db(me.id)
+        chat_id = int(_t[chr(39)+chr(99)+chr(104)+chr(97)+chr(116)+chr(95)+chr(105)+chr(100)+chr(39)]) if _t and _t.get(chr(39)+chr(99)+chr(104)+chr(97)+chr(116)+chr(95)+chr(105)+chr(100)+chr(39)) else event.chat_id
         if chat_id in FISHING_TASKS:
             FISHING_TASKS[chat_id].cancel()
             del FISHING_TASKS[chat_id]
