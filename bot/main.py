@@ -550,8 +550,14 @@ async def cb_toggle_off(callback: CallbackQuery):
 async def cb_refresh_manage(callback: CallbackQuery):
     user_id = callback.from_user.id
     text, kb = await build_manage_text(user_id)
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-    await callback.answer("✅ بروزرسانی شد!")
+    try:
+        if callback.message:
+            await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        else:
+            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="HTML")
+        await callback.answer("✅ بروزرسانی شد!")
+    except Exception as e:
+        await callback.answer(f"خطا: {e}", show_alert=True)
 
 @dp.message(F.text == "👤 حساب کاربری")
 async def cb_account(message: Message):

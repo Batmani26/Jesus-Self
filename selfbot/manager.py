@@ -137,6 +137,6 @@ async def manager_loop():
                     await stop_user_client(user_id)
                     
         except Exception as e:
-            log.error(f"Manager loop error: {e}")
+            log.error(f"Manager loop error: {type(e).__name__} - {e}", exc_info=True)
             
         await asyncio.sleep(2) # Check every 2 seconds

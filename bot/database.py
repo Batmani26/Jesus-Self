@@ -51,7 +51,11 @@ async def get_decrypted_session(user_id):
     async with pool.acquire() as conn:
         row = await conn.fetchrow('SELECT session_string FROM users WHERE user_id = $1', user_id)
         if row and row['session_string']:
-            return cipher_suite.decrypt(row['session_string'].encode()).decode()
+            try:
+                return cipher_suite.decrypt(row['session_string'].encode()).decode()
+            except Exception:
+                # Fallback for old plaintext sessions
+                return row['session_string']
         return None
 
 async def set_user_phone(user_id, phone):
