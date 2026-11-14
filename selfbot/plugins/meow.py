@@ -27,8 +27,8 @@ def register(client) -> None:
         from bot.main import ADMIN_ID
         
         target = await get_meow_target_db(ADMIN_ID)
-        if not target:
-            await event.edit("⚠️ لطفاً ابتدا با دستور `.تنظیم میویی` یک چت را به عنوان مقصد انتخاب کنید.")
+        if not target or not target.get('chat_id'):
+            await event.edit("⚠️ **خطا:** لطفاً ابتدا چت مقصد را با دستور `.تنظیم میویی` مشخص کنید.")
             return
             
         chat_id = int(target['chat_id'])
@@ -42,27 +42,26 @@ def register(client) -> None:
             while True:
                 try:
                     msg = await client.send_message(chat_id, "میو")
-                    await asyncio.sleep(1) # wait a bit for the bot to respond
-                    
-                    # Check for cooldown message by reading the reply to our message
                     await asyncio.sleep(2) # Wait for bot to reply
-                    msg = await client.get_messages(chat_id, ids=msg.id)
+                    
                     cooldown = 60 # default
-                    if msg and msg.reply_to_msg_id:
-                        reply = await msg.get_reply_message()
-                        if reply and reply.text and "بعد از" in reply.text:
-                            match_mmss = re.search(r'(\d+):(\d+)', reply.text)
+                    # Read the last few messages to find the bot's cooldown reply
+                    messages = await client.get_messages(chat_id, limit=5)
+                    for m in messages:
+                        if m.text and "بعد از" in m.text:
+                            match_mmss = re.search(r'(\d+):(\d+)', m.text)
                             if match_mmss:
                                 minutes = int(match_mmss.group(1))
                                 seconds = int(match_mmss.group(2))
-                                cooldown = (minutes * 60) + seconds + 2 # 2s buffer
+                                cooldown = (minutes * 60) + seconds + 2
                             else:
-                                match_words = re.search(r'(\d+)\s*(ثانیه|دقیقه)', reply.text)
+                                match_words = re.search(r'(\d+)\s*(ثانیه|دقیقه)', m.text)
                                 if match_words:
                                     val = int(match_words.group(1))
                                     if "دقیقه" in match_words.group(2):
                                         val *= 60
                                     cooldown = val + 2
+                            break
                             
                     await asyncio.sleep(cooldown)
                 except Exception as e:
