@@ -1,14 +1,41 @@
-"""Panel plugin: `.پنل` opens an inline menu of features."""
 from telethon import events
 from telethon.tl.custom import Button
-
 from selfbot.config import config
-from bot.database import get_yaqoot
+from bot.database import get_yaqoot, get_meow_target_db
+
+def _b(t, d):
+    return Button.inline(t, d.encode())
+
+
+
+
+
+
+async def _main_menu(event, balance):
+    kb = [
+        [_b("میویی", "cat_meowie_info")],
+        [_b("بازی ها", "cat_games"), _b("ابزار ها", "cat_tools")],
+        [_b("نظارت و سرگرمی", "cat_fun"), _b("تقلب", "cat_cheat")],
+        [_b("استاک و امنیت", "cat_security")],
+        [_b("بروزرسانی", "refresh_panel"), _b("بستن پنل", "feat_close")],
+    ]
+    text = f"پنل مدیریت\n\n💰 موجودی یاقوت: **{balance}**"
+    await event.reply(text, buttons=kb, parse_mode="md")
+
+
+async def _meowie_menu(event):
+    kb = [
+        [_b("میو روشن", "meow_on"), _b("میو خاموش", "meow_off")],
+        [_b("نجات پیشی روشن", "savecat_on"), _b("نجات پیشی خاموش", "savecat_off")],
+        [_b("ماهیگیری روشن", "fishing_on"), _b("ماهیگیری خاموش", "fishing_off")],
+        [_b("بازگشت", "refresh_panel")],
+    ]
+    await event.reply("بخش میویی", buttons=kb)
 
 def register(client) -> None:
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\\{p}پنل$"))
     async def panel_cmd(event: events.NewMessage.Event) -> None:
         me = await event.client.get_me()
         try:
@@ -16,39 +43,39 @@ def register(client) -> None:
         except Exception:
             balance = 0
         if balance <= 0:
-            await event.reply("❌ **موجودی یاقوت شما به پایان رسیده است** — ابتدا شارژ کنید", parse_mode="md")
+            await event.reply("موجودی یاقوت شما به پایان رسیده است. ابتدا شارژ کنید.")
             return
-        buttons = [
-            [Button.inline("وضعیت سلف‌بات", b"feat_status"), Button.inline("ذخیره‌ساز", b"feat_saver")],
-            [Button.inline("ویس", b"feat_voice"), Button.inline("موزیک", b"feat_music")],
-            [Button.inline("بستن پنل", b"feat_close")],
-        ]
-        text = f"🎛 **پنل مدیریت**\n\n💰 موجودی یاقوت: **{balance}**\n\nیک گزینه را انتخاب کنید:"
-        await event.reply(text, buttons=buttons, parse_mode="md")
+        await _main_menu(event, balance)
 
     @client.on(events.CallbackQuery())
     async def panel_callback(event: events.CallbackQuery.Event) -> None:
-        data = event.data.decode('utf-8')
+        data = event.data.decode(chr(39)+chr(117)+chr(116)+chr(102)+chr(45)+chr(56)+chr(39))
+        me = await event.client.get_me()
         try:
-            if data == "feat_close":
-                await event.delete()
-            elif data == "feat_status":
-                await event.answer("✅ سلف‌بات آنلاین است.", alert=True)
-            elif data == "feat_saver":
-                await event.answer("📸 قابلیت ذخیره زمان‌دار فعال است. فقط کافیه کسی برات عکس زمان‌دار بفرسته.", alert=True)
-            elif data == "feat_voice":
-                await event.answer("🎙 برای تبدیل متن به ویس از دستور .say <text> استفاده کن.", alert=True)
-            elif data == "feat_music":
-                await event.answer("🎵 برای جستجوی آهنگ از دستور .song <name> استفاده کن.", alert=True)
-            elif data == "cat_games":
-                await event.answer("🎮 بخش بازی‌ها (به‌زودی)", alert=True)
-            elif data == "cat_tools":
-                await event.answer("🛠 بخش ابزارها (به‌زودی)", alert=True)
-            elif data == "cat_fun":
-                await event.answer("👁 بخش نظارت و سرگرمی (به‌زودی)", alert=True)
-            elif data == "cat_cheat":
-                await event.answer("🎭 بخش تقلب (به‌زودی)", alert=True)
-            elif data == "cat_security":
-                await event.answer("🛡 بخش استاک و امنیت (به‌زودی)", alert=True)
+            balance = await get_yaqoot(me.id)
         except Exception:
-            pass
+            balance = 0
+        if data == "feat_close":
+            await event.delete()
+        elif data == "refresh_panel":
+            try:
+                await event.delete()
+            except Exception:
+                pass
+            await _main_menu(event, balance)
+        elif data == "cat_meowie_info":
+            await _meowie_menu(event)
+        elif data in ("cat_games","cat_tools","cat_fun","cat_cheat","cat_security"):
+            await event.answer("به زودی", alert=True)
+        elif data == "meow_on":
+            await event.answer("برای فعال‌سازی دستور .میو روشن را بزن", alert=True)
+        elif data == "meow_off":
+            await event.answer("برای خاموش‌کردن دستور .میو خاموش را بزن", alert=True)
+        elif data == "savecat_on":
+            await event.answer("برای فعال‌سازی دستور .نجات پیشی روشن را بزن", alert=True)
+        elif data == "savecat_off":
+            await event.answer("برای خاموش‌کردن دستور .نجات پیشی خاموش را بزن", alert=True)
+        elif data == "fishing_on":
+            await event.answer("برای فعال‌سازی دستور .ماهیگیری روشن را بزن", alert=True)
+        elif data == "fishing_off":
+            await event.answer("برای خاموش‌کردن دستور .ماهیگیری خاموش را بزن", alert=True)
