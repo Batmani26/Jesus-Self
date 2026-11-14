@@ -331,12 +331,19 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         return
 
     if data_str == "cat_save_cat":
+        from selfbot.plugins.save_cat import SAVE_CAT_STATUS
+        status_text = "🟢 فعال (مشغول)" if SAVE_CAT_STATUS["active"] else "🔴 غیرفعال"
+        if SAVE_CAT_STATUS["scanning"]:
+            status_text = "🔍 در حال جستجو..."
+            
         info_text = (
             "🐈 <b>نجات پیشی</b>\n\n"
+            f"📊 <b>وضعیت:</b> {status_text}\n\n"
             "<blockquote>با فعال کردن این قابلیت، سلف‌بات به صورت خودکار روی دکمه «نجات پیشی» در پیام‌های ربات میویی کلیک می‌کند تا گربه‌ها را نجات دهد.</blockquote>\n\n"
             "<b>دستورات:</b>\n"
             "<code>.نجات پیشی روشن</code> (برای شروع)\n"
-            "<code>.نجات پیشی خاموش</code> (برای توقف)\n\n"
+            "<code>.نجات پیشی خاموش</code> (برای توقف)\n"
+            "<code>.نجات در تمامی چت ها</code> (جستجوی همه گروه‌ها)\n\n"
             "👇 برای کپی، روی هر دستور کلیک کنید."
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
