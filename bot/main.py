@@ -476,13 +476,42 @@ async def cb_copy_stalk(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "back_to_panel")
 async def cb_back_to_panel(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    balance = await get_yaqoot(user_id)
+    total_seconds = balance * 1800
+    days = total_seconds // 86400
+    hours = (total_seconds % 86400) // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    
+    now_utc = datetime.now(pytz.utc)
+    now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
+    time_str = now_tehran.strftime("%H:%M:%S")
+    date_miladi = now_tehran.strftime("%Y/%m/%d")
+    date_shamsi = JalaliDate(now_tehran).strftime("%Y/%m/%d")
+    
+    text = (
+        "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
+        f"💎 موجودی: **{balance}** یاقوت\n"
+        f"⏳ معادل: **{days}** روز، **{hours}** ساعت، **{minutes}** دقیقه، **{seconds}** ثانیه\n"
+        f"⏰ ساعت: `{time_str}`\n"
+        f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
+        "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
+    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
+        [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
+        [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
+        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
+    ])
     try:
         if callback.message:
-            await callback.message.edit_text("در حال بازگشت...")
+            await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
         else:
-            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text="در حال بازگشت...")
-    except Exception:
-        pass
+            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="Markdown")
+        await callback.answer("✅ به پنل اصلی بازگشتید.")
+    except Exception as e:
+        await callback.answer(f"خطا: {e}", show_alert=True)
     user_id = callback.from_user.id
     balance = await get_yaqoot(user_id)
     total_seconds = balance * 1800
