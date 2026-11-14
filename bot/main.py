@@ -297,7 +297,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "بازی مورد نظر خود را انتخاب کنید:"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🐱 میو خودکار", callback_data="cat_meowie_info")],
+            [InlineKeyboardButton(text="🐱 میویی", callback_data="cat_meowie_info")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
@@ -311,12 +311,31 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         return
 
     if data_str == "cat_meowie_info":
+        meowie_text = (
+            "🐱 <b>بخش میویی</b>\n\n"
+            "قابلیت مورد نظر را انتخاب کنید:"
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🤖 میو خودکار", callback_data="cat_meow_auto")],
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_games")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(meowie_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=meowie_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "cat_meow_auto":
         from bot.database import get_meow_target_db
         target = await get_meow_target_db(callback.from_user.id)
-        target_text = f"📍 مقصد فعلی: **{target['chat_title']}**" if target else "⚠️ مقصدی تنظیم نشده است."
+        target_text = f"📍 مقصد فعلی: <b>{target['chat_title']}</b>" if target else "⚠️ مقصدی تنظیم نشده است."
         
         info_text = (
-            "🐱 <b>میو خودکار</b>\n\n"
+            "🤖 <b>میو خودکار</b>\n\n"
             "<blockquote>با استفاده از این قابلیت، می‌توانید در گروه‌هایی که ربات میویی وجود دارد، به صورت خودکار کلمه «میو» را ارسال کنید تا امتیاز جمع کنید.</blockquote>\n\n"
             f"{target_text}\n\n"
             "<b>مراحل:</b>\n"
@@ -327,7 +346,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "👇 برای کپی، روی هر دستور کلیک کنید."
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_games")]
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_meowie_info")]
         ])
         try:
             if callback.message:
