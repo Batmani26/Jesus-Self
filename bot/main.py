@@ -330,14 +330,12 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         return
 
     if data_str == "cat_meow_auto":
-        from bot.database import get_meow_target_db
-        from selfbot.plugins.meow import MEOW_TASKS
+        from bot.database import get_meow_target_db, get_meow_active
         try:
             target = await get_meow_target_db(callback.from_user.id)
+            is_active = await get_meow_active(callback.from_user.id)
             if target:
-                chat_id = int(target['chat_id'])
-                is_running = chat_id in MEOW_TASKS
-                status_text = "🟢 فعال (مشغول)" if is_running else "🔴 غیرفعال (بیکار)"
+                status_text = "🟢 فعال (مشغول)" if is_active else "🔴 غیرفعال (بیکار)"
                 target_text = f"📍 مقصد فعلی: <b>{target['chat_title']}</b>\n📊 وضعیت: {status_text}"
             else:
                 target_text = "⚠️ مقصدی تنظیم نشده است."
