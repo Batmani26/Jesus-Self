@@ -31,16 +31,19 @@ async def get_groq_response(prompt: str) -> str:
 async def get_gemini_response(prompt: str) -> str:
     if not GEMINI_API_KEY:
         return None
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # Updated to the correct endpoint
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=data, timeout=15) as resp:
+            async with session.post(url, json=data, timeout=20) as resp:
                 if resp.status == 200:
                     res_json = await resp.json()
                     return res_json['candidates'][0]['content']['parts'][0]['text']
-    except Exception:
-        pass
+                else:
+                    print(f"Gemini Error: {resp.status} - {await resp.text()}")
+    except Exception as e:
+        print(f"Gemini Exception: {e}")
     return None
 
 async def get_ai_response(prompt: str) -> str:
@@ -59,14 +62,16 @@ async def get_ai_response(prompt: str) -> str:
         return res
         
     # Ultimate fallback to Pollinations
-    url = "https://text.pollinations.ai/" + prompt
+    url = f"https://text.pollinations.ai/{prompt}?model=openai"
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=30) as response:
                 if response.status == 200:
                     return await response.text()
-    except Exception:
-        pass
+                else:
+                    print(f"Pollinations Error: {response.status}")
+    except Exception as e:
+        print(f"Pollinations Exception: {e}")
         
     return "❌ متاسفانه در حال حاضر هیچ‌کدوم از سرویس‌های هوش مصنوعی پاسخ ندادن."
 
