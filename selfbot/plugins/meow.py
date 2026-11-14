@@ -9,14 +9,34 @@ MEOW_TASKS = {}
 def register(client) -> None:
     p = config.PREFIX
 
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}تنظیم میویی$"))
+    async def set_meow_target(event: events.NewMessage.Event) -> None:
+        chat_id = event.chat_id
+        chat = await event.get_chat()
+        chat_title = getattr(chat, 'title', 'چت خصوصی')
+        
+        from bot.database import set_meow_target_db
+        from bot.main import ADMIN_ID
+        await set_meow_target_db(ADMIN_ID, str(chat_id), chat_title)
+        
+        await event.edit(f"✅ چت **{chat_title}** به عنوان مقصد میو کردن تنظیم شد.\n\nحالا برای شروع، دستور `.میو روشن` را بزنید.", parse_mode="md")
+
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}میو روشن$"))
     async def start_meow(event: events.NewMessage.Event) -> None:
-        chat_id = event.chat_id
+        from bot.database import get_meow_target_db
+        from bot.main import ADMIN_ID
+        
+        target = await get_meow_target_db(ADMIN_ID)
+        if not target:
+            await event.edit("⚠️ لطفاً ابتدا با دستور `.تنظیم میویی` یک چت را به عنوان مقصد انتخاب کنید.")
+            return
+            
+        chat_id = int(target['chat_id'])
         if chat_id in MEOW_TASKS:
             await event.edit("⚠️ میو کردن در این چت از قبل روشن است.")
             return
             
-        await event.edit("✅ این چت به عنوان چت مقصد انتخاب شد. شروع میو کردن...")
+        await event.edit(f"✅ شروع میو کردن در چت **{target['chat_title']}**...")
         
         async def meow_loop():
             while True:

@@ -297,7 +297,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "بازی مورد نظر خود را انتخاب کنید:"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🐱 میویی", callback_data="cat_meowie_info")],
+            [InlineKeyboardButton(text="🐱 میو خودکار", callback_data="cat_meowie_info")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
@@ -311,12 +311,19 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         return
 
     if data_str == "cat_meowie_info":
+        from bot.database import get_meow_target_db
+        target = await get_meow_target_db(callback.from_user.id)
+        target_text = f"📍 مقصد فعلی: **{target['chat_title']}**" if target else "⚠️ مقصدی تنظیم نشده است."
+        
         info_text = (
-            "🐱 <b>بخش میویی (Meowie)</b>\n\n"
+            "🐱 <b>میو خودکار</b>\n\n"
             "<blockquote>با استفاده از این قابلیت، می‌توانید در گروه‌هایی که ربات میویی وجود دارد، به صورت خودکار کلمه «میو» را ارسال کنید تا امتیاز جمع کنید.</blockquote>\n\n"
-            "<b>دستورات:</b>\n"
-            "<code>.میو روشن</code> (برای شروع میو کردن در گروه)\n"
-            "<code>.میو خاموش</code> (برای توقف)\n\n"
+            f"{target_text}\n\n"
+            "<b>مراحل:</b>\n"
+            "1️⃣ ابتدا در گروه مورد نظر دستور <code>.تنظیم میویی</code> را بزنید.\n"
+            "2️⃣ سپس دستور <code>.میو روشن</code> را بزنید.\n\n"
+            "<b>دستور توقف:</b>\n"
+            "<code>.میو خاموش</code>\n\n"
             "👇 برای کپی، روی هر دستور کلیک کنید."
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
