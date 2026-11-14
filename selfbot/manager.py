@@ -6,7 +6,7 @@ from telethon import events
 OSINT_QUEUE = asyncio.Queue()
 from selfbot.client import build_client
 from selfbot.loader import load_plugins
-from bot.database import get_all_active_users
+from bot.database import get_all_active_users, get_decrypted_session
 
 log = logging.getLogger("selfbot.manager")
 
@@ -129,7 +129,9 @@ async def manager_loop():
             tasks = []
             for u in users:
                 if u['user_id'] not in ACTIVE_CLIENTS and u['session_string']:
-                    tasks.append(start_user_client(u['user_id'], u['session_string']))
+                    decrypted_session = await get_decrypted_session(u['user_id'])
+                    if decrypted_session:
+                        tasks.append(start_user_client(u['user_id'], decrypted_session))
             if tasks:
                 await asyncio.gather(*tasks)
                     

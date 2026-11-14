@@ -1,6 +1,11 @@
 import asyncpg
 import os
 import asyncio
+from cryptography.fernet import Fernet
+
+# Generate a key (in production, keep this in .env)
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+cipher_suite = Fernet(ENCRYPTION_KEY.encode())
 
 DB_URL = os.getenv("DATABASE_URL", "postgresql://neondb_owner:npg_p7egLwaNhv1F@ep-young-term-zaeho23i-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require")
 
@@ -41,6 +46,14 @@ async def get_user(user_id):
         row = await conn.fetchrow('SELECT * FROM users WHERE user_id = $1', user_id)
         return row
 
+async def get_decrypted_session(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow('SELECT session_string FROM users WHERE user_id = $1', user_id)
+        if row and row['session_string']:
+            return cipher_suite.decrypt(row['session_string'].encode()).decode()
+        return None
+
 async def set_user_phone(user_id, phone):
     await init_db()
     async with pool.acquire() as conn:
@@ -62,8 +75,9 @@ async def add_yaqoot(user_id, amount):
 
 async def save_session(user_id, session_string):
     await init_db()
+    encrypted_session = cipher_suite.encrypt(session_string.encode()).decode()
     async with pool.acquire() as conn:
-        await conn.execute('UPDATE users SET session_string = $1, is_active = 1 WHERE user_id = $2', session_string, user_id)
+        await conn.execute('UPDATE users SET session_string = $1, is_active = 1 WHERE user_id = $2', encrypted_session, user_id)
 
 async def set_user_active(user_id, is_active):
     await init_db()
