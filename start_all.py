@@ -83,7 +83,8 @@ async def run_all():
         safe_loop(manager_loop, "manager_loop"),
         safe_loop(osint_processor, "osint_processor"),
         safe_loop(billing_loop, "billing_loop"),
-        safe_loop(panel_updater_loop, "panel_updater_loop")
+        safe_loop(panel_updater_loop, "panel_updater_loop"),
+        return_exceptions=True
     )
 
 if __name__ == "__main__":

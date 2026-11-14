@@ -138,4 +138,4 @@ async def manager_loop():
                     
         except Exception as e:
             log.error(f"Manager loop error: {e}")
-        await asyncio.sleep(10) # Check every 10 seconds for faster recovery
+        await asyncio.sleep(5) # Check every 5 seconds for faster recovery
