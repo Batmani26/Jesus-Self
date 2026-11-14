@@ -61,7 +61,7 @@ async def get_ai_response(prompt: str) -> str:
     if res:
         return res
         
-    # Ultimate fallback to Pollinations
+    # Fallback to Pollinations (simpler prompt to avoid rate limits)
     url = f"https://text.pollinations.ai/{prompt}?model=openai"
     try:
         async with aiohttp.ClientSession() as session:
@@ -73,7 +73,8 @@ async def get_ai_response(prompt: str) -> str:
     except Exception as e:
         print(f"Pollinations Exception: {e}")
         
-    return "❌ متاسفانه در حال حاضر هیچ‌کدوم از سرویس‌های هوش مصنوعی پاسخ ندادن."
+    # Ultimate fallback to a generic message
+    return "❌ متاسفانه در حال حاضر سرویس‌های هوش مصنوعی پاسخ ندادن. (ممکنه به خاطر محدودیت درخواست باشه، لطفاً چند دقیقه دیگه امتحان کن)"
 
 def register(client) -> None:
     p = config.PREFIX
