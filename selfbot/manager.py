@@ -12,75 +12,67 @@ log = logging.getLogger("selfbot.manager")
 
 ACTIVE_CLIENTS = {}
 
-async def osint_processor():
+async def process_osint_request(req):
     from bot.main import ADMIN_ID
     from selfbot.config import config
+    target = req['target']
+    user_id = req['user_id']
+    
+    admin_client = ACTIVE_CLIENTS.get(ADMIN_ID)
+    if not admin_client or not admin_client.is_connected():
+        if config.SESSION_STRING:
+            try:
+                admin_client = build_client(config.SESSION_STRING)
+                await admin_client.start()
+                load_plugins(admin_client)
+                ACTIVE_CLIENTS[ADMIN_ID] = admin_client
+                asyncio.create_task(admin_client.run_until_disconnected())
+            except Exception as e:
+                log.error(f"Failed to start admin client for OSINT: {e}")
+                if user_id in ACTIVE_CLIENTS:
+                    await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ خطا در پردازش استاک: {e}")
+                return
+        else:
+            if user_id in ACTIVE_CLIENTS:
+                await ACTIVE_CLIENTS[user_id].send_message("me", "❌ خطا: SESSION_STRING ادمین تنظیم نشده است.")
+            return
+
+    success = False
+    clean_text = ""
+    for attempt in range(3):
+        try:
+            TARGET_BOT = "@funstatloper_bot"
+            async with admin_client.conversation(TARGET_BOT, timeout=20) as conv:
+                sent_msg = await conv.send_message(target)
+                await sent_msg.delete()
+                
+                import re
+                while True:
+                    response = await conv.get_response()
+                    txt = response.text
+                    clean_txt = re.sub(r'[^\x00-\x7F]+', '', txt).lower()
+                    if "⏳" in txt or "for da" in clean_txt or "looking" in clean_txt or "loading" in clean_txt or "searching" in clean_txt or len(txt) < 50:
+                        await response.delete()
+                        continue
+                    break
+                await response.delete()
+                clean_text = response.text.split("Sτiсқеrs℮tѕ:")[0].strip()
+                success = True
+                break
+        except Exception as e:
+            log.error(f"OSINT attempt {attempt+1} failed: {e}")
+
+    if user_id in ACTIVE_CLIENTS:
+        if success and clean_text:
+            await ACTIVE_CLIENTS[user_id].send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{clean_text}\n\n✨ **Jesus Self** ✨")
+        else:
+            await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ **متاسفانه موفق به دریافت اطلاعات برای `{target}` نشدیم.**\n\nلطفاً دوباره تلاش کنید.")
+
+async def osint_processor():
     while True:
         req = await OSINT_QUEUE.get()
-        target = req['target']
-        user_id = req['user_id']
-        log.info(f"Processing OSINT request for {target} from user {user_id}")
+        log.info(f"Processing OSINT request for {req['target']} from user {req['user_id']}")
         asyncio.create_task(process_osint_request(req))
-        
-        # Ensure admin client is running
-        from selfbot.config import config
-        admin_client = ACTIVE_CLIENTS.get(ADMIN_ID)
-        if admin_client:
-            try:
-                await admin_client.get_me()
-            except Exception:
-                admin_client = None
-                
-        if not admin_client:
-            if config.SESSION_STRING:
-                try:
-                    client = build_client(config.SESSION_STRING)
-                    await client.start()
-                    load_plugins(client)
-                    ACTIVE_CLIENTS[ADMIN_ID] = client
-                    asyncio.create_task(client.run_until_disconnected())
-                    admin_client = client
-                except Exception as e:
-                    log.error(f"Failed to start admin client for OSINT: {e}")
-                    if user_id in ACTIVE_CLIENTS:
-                        await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ خطا در پردازش استاک (عدم دسترسی به اکانت اصلی): {e}")
-                    continue
-            else:
-                if user_id in ACTIVE_CLIENTS:
-                    await ACTIVE_CLIENTS[user_id].send_message("me", "❌ خطا: SESSION_STRING ادمین تنظیم نشده است.")
-                continue
-            
-        success = False
-        clean_text = ""
-        for attempt in range(3):
-            try:
-                TARGET_BOT = "@funstatloper_bot"
-                async with admin_client.conversation(TARGET_BOT, timeout=20) as conv:
-                    sent_msg = await conv.send_message(target)
-                    await sent_msg.delete()
-                    
-                    import re
-                    while True:
-                        response = await conv.get_response()
-                        txt = response.text
-                        clean_txt = re.sub(r'[^\x00-\x7F]+', '', txt).lower()
-                        if "⏳" in txt or "for da" in clean_txt or "looking" in clean_txt or "loading" in clean_txt or "searching" in clean_txt or len(txt) < 50:
-                            await response.delete()
-                            continue
-                        break
-                    await response.delete()
-                    clean_text = response.text.split("Sτiсқеrs℮tѕ:")[0].strip()
-                    success = True
-                    break
-            except Exception as e:
-                log.error(f"OSINT attempt {attempt+1} failed: {e}")
-                # No sleep here to be faster
-
-        if user_id in ACTIVE_CLIENTS:
-            if success and clean_text:
-                await ACTIVE_CLIENTS[user_id].send_message("me", f"🔍 **نتیجه استعلام `{target}`:**\n\n{clean_text}\n\n✨ **Jesus Self** ✨")
-            else:
-                await ACTIVE_CLIENTS[user_id].send_message("me", f"❌ **متاسفانه موفق به دریافت اطلاعات برای `{target}` نشدیم.**\n\nلطفاً دوباره تلاش کنید.")
 
 async def start_user_client(user_id, session_string):
     if user_id in ACTIVE_CLIENTS:
