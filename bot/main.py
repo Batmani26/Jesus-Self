@@ -8,7 +8,7 @@ import hashlib
 import datetime
 import pytz
 from datetime import datetime
-from persiantools.jdatetime import JalaliDateTime
+from persiantools.jdatetime import JalaliDate
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
 from aiogram import F
 from bot.database import add_user, get_user, set_user_phone, save_session, get_yaqoot, add_yaqoot, get_all_active_users, deduct_yaqoot, deactivate_user, set_user_active
@@ -67,7 +67,7 @@ async def inline_panel(query: InlineQuery):
         now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
         time_str = now_tehran.strftime("%H:%M:%S")
         date_miladi = now_tehran.strftime("%Y/%m/%d")
-        date_shamsi = JalaliDateTime(now_tehran.year, now_tehran.month, now_tehran.day).strftime("%Y/%m/%d")
+        date_shamsi = JalaliDate(now_tehran).strftime("%Y/%m/%d")
         
         text = (
             "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
@@ -115,7 +115,7 @@ async def panel_updater_loop():
         now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
         time_str = now_tehran.strftime("%H:%M:%S")
         date_miladi = now_tehran.strftime("%Y/%m/%d")
-        date_shamsi = JalaliDateTime(now_tehran.year, now_tehran.month, now_tehran.day).strftime("%Y/%m/%d")
+        date_shamsi = JalaliDate(now_tehran).strftime("%Y/%m/%d")
         
         for (chat_id, msg_id), user_id in list(ACTIVE_PANELS.items()):
             try:
