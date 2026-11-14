@@ -346,22 +346,14 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             status_text = "نامشخص"
             interval_display = "نامشخص"
             
-        info_text = (
-            "🎣 <b>ماهیگیری خودکار</b>\n\n"
-            f"{target_text}\n"
-            f"📊 وضعیت: {status_text}\n"
-            f"⏱ تایم تنظیم شده: <b>{interval_display}</b>\n\n"
-            "<blockquote>با استفاده از این قابلیت، سلف‌بات به صورت خودکار کلمه «ماهی» را در چت مقصد ارسال می‌کند.</blockquote>\n\n"
-            "<b>دستورات:</b>\n"
-            "<code>.تنظیم زمان ماهیگیری [دقیقه:ثانیه]</code>\n"
-            "<code>.ماهیگیری روشن</code>\n"
-            "<code>.ماهیگیری خاموش</code>\n\n"
-            "👇 برای کپی، روی هر دستور کلیک کنید."
-        )
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="cat_fishing")],
-            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_meowie_info")]
-        ])
+        from bot.database import get_fish_modes
+        from bot.fish_panel import build_fishing_text, build_fishing_keyboard
+        try:
+            modes = await get_fish_modes(callback.from_user.id)
+        except Exception:
+            modes = {}
+        info_text = build_fishing_text(target_text, status_text, interval_display, modes)
+        kb = build_fishing_keyboard(modes)
         try:
             if callback.message:
                 await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
@@ -371,6 +363,20 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
+
+    if data_str.startswith("fishmode:"):
+        rarity = data_str.split(":", 1)[1]
+        from bot.database import get_fish_modes, set_fish_mode
+        order = ["sell", "cat", "fridge"]
+        try:
+            modes = await get_fish_modes(callback.from_user.id)
+            cur = modes.get(rarity, "sell")
+            nxt = order[(order.index(cur) + 1) % len(order)]
+            await set_fish_mode(callback.from_user.id, rarity, nxt)
+            await callback.answer(f"{rarity} -> {nxt}")
+        except Exception as exc:
+            await callback.answer(f"خطا: {exc}", show_alert=True)
+        data_str = "cat_fishing"
 
     if data_str == "cat_save_cat":
         from selfbot.plugins.save_cat import SAVE_CAT_STATUS
