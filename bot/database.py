@@ -35,6 +35,8 @@ async def init_db():
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_chat_id TEXT')
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_chat_title TEXT')
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_active INTEGER DEFAULT 0')
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS fishing_active INTEGER DEFAULT 0")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS fishing_interval TEXT")
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_interval TEXT')
 
 async def add_user(user_id, username, first_name):
