@@ -55,9 +55,17 @@ def register(client) -> None:
             for row in event.message.reply_markup.rows:
                 for button in row.buttons:
                     if "نجات" in button.text:
-                        try:
-                            await button.click()
-                            print(f"[SAVE CAT] Clicked rescue button in chat {event.chat_id}")
-                        except Exception as e:
-                            print(f"[SAVE CAT ERROR] {e}")
+                        # Keep clicking until the button disappears or changes
+                        for _ in range(10):
+                            try:
+                                await button.click()
+                                print(f"[SAVE CAT] Clicked rescue button in chat {event.chat_id}")
+                                await asyncio.sleep(0.5)
+                                # Check if the button still exists
+                                updated_msg = await event.client.get_messages(event.chat_id, ids=event.message.id)
+                                if not updated_msg or not updated_msg.reply_markup:
+                                    break
+                            except Exception as e:
+                                print(f"[SAVE CAT ERROR] {e}")
+                                break
                         return
