@@ -7,15 +7,18 @@ from selfbot.config import config
 MEOW_TASKS = {}
 
 async def meow_loop_wrapper(client, chat_id, interval_str):
-    # Parse M:SS strictly from user's setting
+    if not interval_str:
+        print(f"[MEOW] No interval set for {chat_id}, aborting.")
+        return
+        
     try:
         parts = interval_str.strip().split(':')
         cooldown = (int(parts[0]) * 60) + int(parts[1])
         if cooldown <= 0:
             raise ValueError("Cooldown must be > 0")
     except Exception as e:
-        print(f"[MEOW] Invalid interval '{interval_str}', defaulting to 4:10. Error: {e}")
-        cooldown = 250 # Fallback to 4:10 only if parsing fails
+        print(f"[MEOW] Invalid interval '{interval_str}', aborting. Error: {e}")
+        return
         
     print(f"[MEOW] Starting loop for {chat_id} with exact cooldown: {cooldown}s")
         
@@ -73,6 +76,10 @@ def register(client) -> None:
         interval = await get_meow_interval(me.id)
         if not target or not target.get('chat_id'):
             await event.edit("⚠️ **خطا:** لطفاً ابتدا چت مقصد را با دستور `.تنظیم میویی` مشخص کنید.")
+            return
+            
+        if not interval:
+            await event.edit("⚠️ **خطا:** لطفاً ابتدا زمان میو کردن خود را با دستور `.تنظیم زمان میویی 4:20` (به عنوان مثال) تنظیم کنید.")
             return
             
         chat_id = int(target['chat_id'])

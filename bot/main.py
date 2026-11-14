@@ -344,11 +344,12 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         
         from bot.database import get_meow_interval
         interval = await get_meow_interval(callback.from_user.id)
+        interval_display = interval if interval else "تنظیم نشده"
         info_text = (
             "🤖 <b>میو خودکار</b>\n\n"
             "<blockquote>با استفاده از این قابلیت، می‌توانید در گروه‌هایی که ربات میویی وجود دارد، به صورت خودکار کلمه «میو» را ارسال کنید تا امتیاز جمع کنید.</blockquote>\n\n"
             f"{target_text}\n"
-            f"⏱ تایم تنظیم شده: <b>{interval}</b> (دقیقه:ثانیه)\n\n"
+            f"⏱ تایم تنظیم شده: <b>{interval_display}</b>\n\n"
             "<b>مراحل:</b>\n"
             "1️⃣ ابتدا در گروه مورد نظر دستور <code>.تنظیم میویی</code> را بزنید.\n"
             "2️⃣ تایم کول‌داون خود را تنظیم کنید (مثال): <code>.تنظیم زمان میویی 4:20</code>\n"

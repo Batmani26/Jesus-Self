@@ -119,7 +119,7 @@ async def get_meow_interval(user_id):
     await init_db()
     async with pool.acquire() as conn:
         row = await conn.fetchrow('SELECT meow_interval FROM users WHERE user_id = $1', user_id)
-        return row['meow_interval'] if row and row['meow_interval'] else "4:10"
+        return row['meow_interval'] if row and row['meow_interval'] else None
 
 async def set_meow_target_db(user_id, chat_id, chat_title):
     await init_db()
