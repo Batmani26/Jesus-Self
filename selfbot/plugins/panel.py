@@ -10,6 +10,7 @@ def register(client) -> None:
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل"))
     async def panel_cmd(event: events.NewMessage.Event) -> None:
+        print(f"[DEBUG] .پنل triggered by {event.sender_id}")
         me = await event.client.get_me()
         balance = await get_yaqoot(me.id)
         

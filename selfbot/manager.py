@@ -137,6 +137,7 @@ async def manager_loop():
                     
             # Ensure admin is running
             if config.SESSION_STRING and ADMIN_ID not in ACTIVE_CLIENTS:
+                log.info("Starting admin client...")
                 await start_user_client(ADMIN_ID, config.SESSION_STRING)
                     
             # Stop clients that are no longer active
