@@ -27,7 +27,7 @@ async def global_scan_loop(client):
                                                 pass
                     except Exception:
                         pass
-            await asyncio.sleep(2) # Wait before next full scan
+            await asyncio.sleep(1) # Wait before next full scan
         except Exception as e:
             print(f"[SAVE CAT GLOBAL] Error: {e}")
             await asyncio.sleep(5)
