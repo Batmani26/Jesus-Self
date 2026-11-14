@@ -19,18 +19,18 @@ async def process_osint_request(req):
     user_id = req['user_id']
     log.info(f"Starting OSINT for {target} (user {user_id})")
     
-    # Use the user's client directly for better reliability
-    client = ACTIVE_CLIENTS.get(user_id)
+    # Strictly use the admin's client
+    client = ACTIVE_CLIENTS.get(ADMIN_ID)
     if not client or not client.is_connected():
         if user_id in ACTIVE_CLIENTS:
-            await ACTIVE_CLIENTS[user_id].send_message("me", "❌ خطا: سلف‌بات شما آفلاین است. لطفاً دوباره تلاش کنید.")
+            await ACTIVE_CLIENTS[user_id].send_message("me", "❌ خطا: اکانت ادمین برای استعلام در دسترس نیست. لطفاً بعداً تلاش کنید.")
         return
 
     success = False
     clean_text = ""
     try:
         TARGET_BOT = "@funstatloper_bot"
-        async with client.conversation(TARGET_BOT, timeout=20) as conv:
+        async with client.conversation(TARGET_BOT, timeout=15) as conv:
             sent_msg = await conv.send_message(target)
             await sent_msg.delete()
             
