@@ -366,7 +366,47 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
     elif cat == "tools":
-        await callback.answer("🛠 بخش ابزارها (به‌زودی)", show_alert=True)
+        tools_text = (
+            "🛠 <b>بخش ابزارها</b>\n\n"
+            "ابزار مورد نظر خود را انتخاب کنید:"
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🧠 هوش مصنوعی", callback_data="tool_ai_info")],
+            [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(tools_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=tools_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "tool_ai_info":
+        info_text = (
+            "🧠 <b>هوش مصنوعی Jesus (جیزس)</b>\n\n"
+            "<blockquote>با استفاده از این قابلیت، می‌توانید با هوش مصنوعی پیشرفته (Llama 3 / Gemini) چت کنید، سوالات علمی، برنامه‌نویسی، ترجمه و... بپرسید.</blockquote>\n\n"
+            "<b>دستور استفاده:</b>\n"
+            "<code>.جیزس [سوال شما]</code>\n\n"
+            "<b>مثال‌ها:</b>\n"
+            "<code>.جیزس یک شعر درباره دریا بگو</code>\n"
+            "<code>.جیزس کد پایتون برای جمع دو عدد بنویس</code>\n\n"
+            "👇 برای کپی، روی هر دستور کلیک کنید."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
     elif cat == "fun":
         await callback.answer("👁 بخش نظارت و سرگرمی (به‌زودی)", show_alert=True)
     elif cat == "cheat":
