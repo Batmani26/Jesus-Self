@@ -9,11 +9,15 @@ MEOW_TASKS = {}
 async def meow_loop_wrapper(client, chat_id):
     while True:
         try:
+            # Check if client is connected, if not break to let manager restart
+            if not client.is_connected():
+                print("[MEOW] Client disconnected, stopping meow loop.")
+                return
+                
             msg = await client.send_message(chat_id, "میو")
             print(f"[MEOW] Sent 'میو' to {chat_id}")
             
-            cooldown = 60 # Default if parsing fails
-            # Wait for the bot to respond
+            cooldown = 60 # Default
             for _ in range(5):
                 await asyncio.sleep(2)
                 messages = await client.get_messages(chat_id, limit=3)
@@ -24,7 +28,7 @@ async def meow_loop_wrapper(client, chat_id):
                         if match_mmss:
                             minutes = int(match_mmss.group(1))
                             seconds = int(match_mmss.group(2))
-                            cooldown = (minutes * 60) + seconds + 1 # 1s buffer
+                            cooldown = (minutes * 60) + seconds + 1
                             found = True
                         else:
                             match_words = re.search(r'(\d+)\s*(ثانیه|دقیقه)', m.text)
@@ -42,7 +46,7 @@ async def meow_loop_wrapper(client, chat_id):
             await asyncio.sleep(cooldown)
         except Exception as e:
             print(f"[MEOW ERROR] {e}")
-            await asyncio.sleep(10)
+            await asyncio.sleep(5)
 
 def register(client) -> None:
     p = config.PREFIX
