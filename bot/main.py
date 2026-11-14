@@ -331,8 +331,11 @@ async def process_inline_panel_callback(callback: CallbackQuery):
 
     if data_str == "cat_meow_auto":
         from bot.database import get_meow_target_db
-        target = await get_meow_target_db(callback.from_user.id)
-        target_text = f"📍 مقصد فعلی: <b>{target['chat_title']}</b>" if target else "⚠️ مقصدی تنظیم نشده است."
+        try:
+            target = await get_meow_target_db(callback.from_user.id)
+            target_text = f"📍 مقصد فعلی: <b>{target['chat_title']}</b>" if target else "⚠️ مقصدی تنظیم نشده است."
+        except Exception:
+            target_text = "⚠️ خطا در خواندن مقصد."
         
         info_text = (
             "🤖 <b>میو خودکار</b>\n\n"
