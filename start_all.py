@@ -89,7 +89,6 @@ async def run_all():
     # Add a top-level monitor that keeps the event loop alive
     while True:
         await asyncio.sleep(3600)
-    )
 
 if __name__ == "__main__":
     try:
