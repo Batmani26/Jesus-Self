@@ -86,6 +86,10 @@ async def run_all():
         safe_loop(panel_updater_loop, "panel_updater_loop"),
         return_exceptions=True
     )
+    # Add a top-level monitor that keeps the event loop alive
+    while True:
+        await asyncio.sleep(3600)
+    )
 
 if __name__ == "__main__":
     try:
