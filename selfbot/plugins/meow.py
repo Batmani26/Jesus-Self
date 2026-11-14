@@ -70,11 +70,13 @@ def register(client) -> None:
             return
             
         chat_id = int(target['chat_id'])
+        
+        # If a task exists, cancel it to start a fresh one
         if chat_id in MEOW_TASKS:
-            await event.edit("⚠️ میو کردن در این چت از قبل روشن است.")
-            return
+            MEOW_TASKS[chat_id].cancel()
+            del MEOW_TASKS[chat_id]
             
-        await event.edit(f"✅ شروع میو کردن در چت **{target['chat_title']}**...")
+        await event.edit(f"✅ شروع مجدد میو کردن در چت **{target['chat_title']}**...")
         
         MEOW_TASKS[chat_id] = asyncio.create_task(meow_loop_wrapper(client, chat_id))
         from bot.database import set_meow_active
