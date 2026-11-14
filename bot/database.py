@@ -115,6 +115,35 @@ async def set_meow_interval(user_id, interval_str):
         await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_interval TEXT')
         await conn.execute('UPDATE users SET meow_interval = $1 WHERE user_id = $2', interval_str, user_id)
 
+async def set_fishing_active(user_id, is_active):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS fishing_active INTEGER DEFAULT 0')
+        await conn.execute('UPDATE users SET fishing_active = $1 WHERE user_id = $2', is_active, user_id)
+
+async def get_fishing_active(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow('SELECT fishing_active FROM users WHERE user_id = $1', user_id)
+        return bool(row['fishing_active']) if row and row['fishing_active'] else False
+
+async def get_all_fishing_active_users():
+    await init_db()
+    async with pool.acquire() as conn:
+        return await conn.fetch('SELECT user_id, meow_chat_id, meow_chat_title FROM users WHERE fishing_active = 1')
+
+async def set_fishing_interval(user_id, interval_str):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS fishing_interval TEXT')
+        await conn.execute('UPDATE users SET fishing_interval = $1 WHERE user_id = $2', interval_str, user_id)
+
+async def get_fishing_interval(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow('SELECT fishing_interval FROM users WHERE user_id = $1', user_id)
+        return row['fishing_interval'] if row and row['fishing_interval'] else None
+
 async def get_meow_interval(user_id):
     await init_db()
     async with pool.acquire() as conn:

@@ -117,6 +117,26 @@ async def manager_loop():
                 if user_id not in active_ids:
                     await stop_user_client(user_id)
                     
+            # 4.5 Restore active fishing tasks
+            from selfbot.plugins.fishing import FISHING_TASKS, fishing_loop_wrapper
+            from bot.database import get_all_fishing_active_users, get_fishing_interval
+            fishing_users = await get_all_fishing_active_users()
+            active_fishing_ids = set()
+            for fu in fishing_users:
+                fcid = int(fu['meow_chat_id'])
+                fuid = fu['user_id']
+                active_fishing_ids.add(fcid)
+                if fcid not in FISHING_TASKS:
+                    fclient = ACTIVE_CLIENTS.get(fuid)
+                    if fclient and fclient.is_connected():
+                        finterval = await get_fishing_interval(fuid)
+                        if finterval:
+                            FISHING_TASKS[fcid] = asyncio.create_task(fishing_loop_wrapper(fclient, fcid, finterval))
+            for fcid in list(FISHING_TASKS.keys()):
+                if fcid not in active_fishing_ids:
+                    FISHING_TASKS[fcid].cancel()
+                    del FISHING_TASKS[fcid]
+
             # 5. Forcefully restore active meow tasks
             from selfbot.plugins.meow import MEOW_TASKS, meow_loop_wrapper
             meow_users = await get_all_meow_active_users()
