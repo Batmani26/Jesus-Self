@@ -45,10 +45,9 @@ def register(client) -> None:
                     await asyncio.sleep(2) # Wait for bot to reply
                     
                     cooldown = 60 # default
-                    # Read the last few messages to find the bot's cooldown reply
                     messages = await client.get_messages(chat_id, limit=5)
                     for m in messages:
-                        if m.text and "بعد از" in m.text:
+                        if m.text and ("بعد از" in m.text or "باید" in m.text):
                             match_mmss = re.search(r'(\d+):(\d+)', m.text)
                             if match_mmss:
                                 minutes = int(match_mmss.group(1))
