@@ -32,7 +32,7 @@ async def fishing_loop_wrapper(client, chat_id, interval_str):
 def register(client) -> None:
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}تنظیم زمان ماهیگیری (\d+:\d+)$"))
+    @client.on(events.NewMessage(outgoing=True, pattern="^" + re.escape(p) + "تنظیم زمان ماهیگیری (\\d+:\\d+)$"))
     async def set_fishing_time(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
         interval = event.pattern_match.group(1).strip()
@@ -40,7 +40,7 @@ def register(client) -> None:
         await set_fishing_interval(me.id, interval)
         await event.edit(f"✅ زمان ماهیگیری شما روی **{interval}** (دقیقه:ثانیه) تنظیم شد.")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}ماهیگیری روشن$"))
+    @client.on(events.NewMessage(outgoing=True, pattern="^" + re.escape(p) + "ماهیگیری روشن$"))
     async def start_fishing(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
         from bot.database import get_meow_target_db, get_fishing_interval, set_fishing_active
@@ -66,7 +66,7 @@ def register(client) -> None:
         FISHING_TASKS[chat_id] = asyncio.create_task(fishing_loop_wrapper(client, chat_id, interval))
         await set_fishing_active(me.id, 1)
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}ماهیگیری خاموش$"))
+    @client.on(events.NewMessage(outgoing=True, pattern="^" + re.escape(p) + "ماهیگیری خاموش$"))
     async def stop_fishing(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
         from bot.database import set_fishing_active, get_meow_target_db
