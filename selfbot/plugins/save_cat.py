@@ -28,25 +28,32 @@ async def _try_rescue(client, chat_id, msg):
         return
     _INFLIGHT.add(key)
     try:
-        for _ in range(15):
-            current = await client.get_messages(chat_id, ids=msg.id)
-            if not current or not _has_rescue(current):
+        for attempt in range(3):
+            try:
+                current = await client.get_messages(chat_id, ids=msg.id)
+            except Exception as exc:
+                print(f"[SAVE CAT] fetch error: {exc}")
+                await asyncio.sleep(0.2)
+                continue
+            if not current or not getattr(current, "reply_markup", None):
                 break
-            clicked_any = False
+            target = None
             for row in current.reply_markup.rows:
                 for button in row.buttons:
-                    text = getattr(button, chr(116)+chr(101)+chr(120)+chr(116), chr(39)+chr(39)) or chr(39)+chr(39)
-                    if not any(k in text for k in _RESCUE_KEYWORDS):
-                        continue
-                    try:
-                        await button.click()
-                        clicked_any = True
-                        await asyncio.sleep(0.15)
-                    except Exception:
-                        pass
-            if not clicked_any:
+                    text = getattr(button, "text", "") or ""
+                    if any(k in text for k in _RESCUE_KEYWORDS):
+                        target = button
+                        break
+                if target:
+                    break
+            if not target:
                 break
-            await asyncio.sleep(0.25)
+            try:
+                await target.click()
+                print(f"[SAVE CAT] clicked rescue in {chat_id} (try {attempt+1})")
+            except Exception as exc:
+                print(f"[SAVE CAT] click error: {exc}")
+            await asyncio.sleep(0.2)
         _CLICKED.add(key)
     finally:
         _INFLIGHT.discard(key)
