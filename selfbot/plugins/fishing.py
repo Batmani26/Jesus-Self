@@ -6,7 +6,7 @@ from selfbot.config import config
 
 FISHING_TASKS = {}
 
-async def fishing_loop_wrapper(client, chat_id, interval_str):
+async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None):
     if not interval_str:
         return
     try:
@@ -19,10 +19,25 @@ async def fishing_loop_wrapper(client, chat_id, interval_str):
         
     while True:
         try:
+            if user_id is None:
+                me = await client.get_me()
+                owner_id = me.id
+            else:
+                owner_id = user_id
             while not client.is_connected():
                 await asyncio.sleep(2)
                 
-            await client.send_message(chat_id, "ماهی")
+            sent = await client.send_message(chat_id, "ماهی")
+            try:
+                from bot.database import get_fish_modes
+                modes = await get_fish_modes(owner_id)
+            except Exception:
+                modes = {}
+            try:
+                from selfbot.plugins.fish_actions import handle_catch
+                await handle_catch(client, chat_id, sent.id, modes)
+            except Exception as exc:
+                print(f"[FISH] action error: {exc}")
             await asyncio.sleep(cooldown)
         except asyncio.CancelledError:
             break
