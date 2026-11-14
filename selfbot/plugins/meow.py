@@ -10,32 +10,39 @@ async def meow_loop_wrapper(client, chat_id):
     while True:
         try:
             msg = await client.send_message(chat_id, "میو")
-            await asyncio.sleep(2.5) # Wait for the bot to respond
+            print(f"[MEOW] Sent 'میو' to {chat_id}")
             
             cooldown = 60 # Default if parsing fails
-            messages = await client.get_messages(chat_id, limit=3)
-            
-            for m in messages:
-                if m.text and ("بعد از" in m.text or "باید" in m.text):
-                    match_mmss = re.search(r'(\d+):(\d+)', m.text)
-                    if match_mmss:
-                        minutes = int(match_mmss.group(1))
-                        seconds = int(match_mmss.group(2))
-                        cooldown = (minutes * 60) + seconds + 1 # 1s buffer
-                    else:
-                        match_words = re.search(r'(\d+)\s*(ثانیه|دقیقه)', m.text)
-                        if match_words:
-                            val = int(match_words.group(1))
-                            if "دقیقه" in match_words.group(2):
-                                val *= 60
-                            cooldown = val + 1
+            # Wait for the bot to respond
+            for _ in range(5):
+                await asyncio.sleep(2)
+                messages = await client.get_messages(chat_id, limit=3)
+                found = False
+                for m in messages:
+                    if m.text and ("بعد از" in m.text or "باید" in m.text):
+                        match_mmss = re.search(r'(\d+):(\d+)', m.text)
+                        if match_mmss:
+                            minutes = int(match_mmss.group(1))
+                            seconds = int(match_mmss.group(2))
+                            cooldown = (minutes * 60) + seconds + 1 # 1s buffer
+                            found = True
+                        else:
+                            match_words = re.search(r'(\d+)\s*(ثانیه|دقیقه)', m.text)
+                            if match_words:
+                                val = int(match_words.group(1))
+                                if "دقیقه" in match_words.group(2):
+                                    val *= 60
+                                cooldown = val + 1
+                                found = True
+                        break
+                if found:
                     break
             
-            # Sleep for the exact cooldown time
+            print(f"[MEOW] Waiting for {cooldown} seconds...")
             await asyncio.sleep(cooldown)
         except Exception as e:
-            print(f"Meow error: {e}")
-            await asyncio.sleep(5)
+            print(f"[MEOW ERROR] {e}")
+            await asyncio.sleep(10)
 
 def register(client) -> None:
     p = config.PREFIX
