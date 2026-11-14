@@ -31,6 +31,9 @@ async def init_db():
             ''')
             # Add last_deduction if it doesn't exist (for existing tables)
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_deduction TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_chat_id TEXT')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_chat_title TEXT')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_active INTEGER DEFAULT 0')
 
 async def add_user(user_id, username, first_name):
     await init_db()
@@ -108,10 +111,6 @@ async def get_all_meow_active_users():
 async def set_meow_target_db(user_id, chat_id, chat_title):
     await init_db()
     async with pool.acquire() as conn:
-        await conn.execute('''
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_chat_id TEXT;
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_chat_title TEXT;
-        ''')
         await conn.execute('UPDATE users SET meow_chat_id = $1, meow_chat_title = $2 WHERE user_id = $3', chat_id, chat_title, user_id)
 
 async def get_meow_target_db(user_id):
