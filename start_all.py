@@ -72,10 +72,11 @@ async def run_all():
         while True:
             try:
                 await loop_func()
+            except asyncio.CancelledError:
+                break
             except Exception as e:
                 log.error(f"Error in {name}: {e}", exc_info=True)
                 await asyncio.sleep(5)
-                # The loop_func itself has a while True, so if it throws, we restart it here.
                 
     await asyncio.gather(
         dp.start_polling(bot),
