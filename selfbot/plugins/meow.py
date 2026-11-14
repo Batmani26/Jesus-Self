@@ -13,12 +13,15 @@ async def meow_loop_wrapper(client, chat_id):
         try:
             # Block until the client is connected
             while not client.is_connected():
-                print("[MEOW] Client disconnected. Waiting for reconnect...")
                 await asyncio.sleep(2)
                 
-            msg = await client.send_message(chat_id, "میو")
-            print(f"[MEOW] Sent 'میو' to {chat_id}")
-            
+            try:
+                msg = await client.send_message(chat_id, "میو")
+            except Exception as e:
+                print(f"[MEOW] Send error: {e}")
+                await asyncio.sleep(5)
+                continue
+                
             # Attempt to read the cooldown from the bot's reply
             await asyncio.sleep(3)
             try:
@@ -31,18 +34,15 @@ async def meow_loop_wrapper(client, chat_id):
                             minutes = int(match_mmss.group(1))
                             seconds = int(match_mmss.group(2))
                             cooldown = (minutes * 60) + seconds + 2
-                            print(f"[MEOW] Detected new cooldown: {cooldown}s")
             except Exception as e:
-                print(f"[MEOW] Error reading reply: {e}")
+                print(f"[MEOW] Read error: {e}")
                 
-            print(f"[MEOW] Waiting for {cooldown} seconds...")
             await asyncio.sleep(cooldown)
         except asyncio.CancelledError:
-            print("[MEOW] Task cancelled by user.")
             break
         except Exception as e:
             print(f"[MEOW ERROR] {e}")
-            await asyncio.sleep(5)
+            await asyncio.sleep(2)
 
 def register(client) -> None:
     p = config.PREFIX
