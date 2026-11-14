@@ -145,8 +145,11 @@ async def manager_loop():
                         
             # 6. Clean up dead meow tasks
             for cid in list(MEOW_TASKS.keys()):
-                if MEOW_TASKS[cid].done():
-                    del MEOW_TASKS[cid]
+                try:
+                    if MEOW_TASKS[cid].done():
+                        del MEOW_TASKS[cid]
+                except Exception:
+                    pass
                     
         except Exception as e:
             log.error(f"Manager loop error: {type(e).__name__} - {e}", exc_info=True)

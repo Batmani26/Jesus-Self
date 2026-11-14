@@ -10,7 +10,6 @@ from bot.database import init_db, get_all_active_users, deduct_yaqoot, deactivat
 from selfbot.manager import manager_loop, osint_processor
 from aiogram import Bot
 from bot.main import BOT_TOKEN
-import asyncio
 
 import datetime
 
