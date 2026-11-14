@@ -15,6 +15,9 @@ def register(client) -> None:
             balance = await get_yaqoot(me.id)
         except Exception:
             balance = 0
+        if balance <= 0:
+            await event.reply("❌ **موجودی یاقوت شما به پایان رسیده است** — ابتدا شارژ کنید", parse_mode="md")
+            return
         buttons = [
             [Button.inline("وضعیت سلف‌بات", b"feat_status"), Button.inline("ذخیره‌ساز", b"feat_saver")],
             [Button.inline("ویس", b"feat_voice"), Button.inline("موزیک", b"feat_music")],
