@@ -76,12 +76,32 @@ def register(client) -> None:
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}جیزس (.+)$"))
     async def jesus_ai(event: events.NewMessage.Event) -> None:
         prompt = event.pattern_match.group(1).strip()
-        await event.edit("⏳ در حال فکر کردن...")
         
-        response = await get_ai_response(prompt)
+        # Check if the user is asking about the current chat
+        context_keywords = ["گپ", "چت", "اینجا", "این گروه", "این چت"]
+        is_chat_question = any(k in prompt for k in context_keywords)
+        
+        context_text = ""
+        if is_chat_question:
+            messages = await client.get_messages(event.chat_id, limit=10)
+            context_lines = []
+            for m in reversed(messages):
+                if m.text:
+                    sender = await m.get_sender()
+                    name = getattr(sender, 'first_name', 'Unknown')
+                    context_lines.append(f"{name}: {m.text}")
+            context_text = "\nContext of recent messages in this chat:\n" + "\n".join(context_lines)
+            
+        full_prompt = f"User Question: {prompt}{context_text}"
+        
+        # Send a new message for the thinking status
+        status_msg = await event.reply("⏳ در حال فکر کردن...")
+        
+        response = await get_ai_response(full_prompt)
         
         # Split response if it's too long
         if len(response) > 4000:
             response = response[:4000] + "..."
             
-        await event.edit(f"🤖 **جیزس:**\n\n{response}")
+        # Edit the status message with the final answer
+        await status_msg.edit(f"🤖 **جیزس:**\n\n{response}")
