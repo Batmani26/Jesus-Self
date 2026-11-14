@@ -7,6 +7,8 @@ from selfbot.config import config
 MEOW_TASKS = {}
 
 async def meow_loop_wrapper(client, chat_id):
+    cooldown = 250 # Default initial cooldown (4 mins 10 secs)
+    
     while True:
         try:
             if not client.is_connected():
@@ -16,22 +18,22 @@ async def meow_loop_wrapper(client, chat_id):
             msg = await client.send_message(chat_id, "میو")
             print(f"[MEOW] Sent 'میو' to {chat_id}")
             
-            cooldown = 60
-            # Wait for the direct reply
-            await asyncio.sleep(3)
-            try:
-                # Fetch the message to get its reply
-                updated_msg = await client.get_messages(chat_id, ids=msg.id)
-                if updated_msg and updated_msg.reply_to_msg_id:
-                    reply = await updated_msg.get_reply_message()
-                    if reply and reply.text:
-                        match_mmss = re.search(r'(\d+):(\d+)', reply.text)
-                        if match_mmss:
-                            minutes = int(match_mmss.group(1))
-                            seconds = int(match_mmss.group(2))
-                            cooldown = (minutes * 60) + seconds + 1
-            except Exception as e:
-                print(f"[MEOW] Error reading reply: {e}")
+            # Only check the timer if we don't have a confirmed one yet, or occasionally to adjust
+            if cooldown == 250:
+                await asyncio.sleep(3)
+                try:
+                    updated_msg = await client.get_messages(chat_id, ids=msg.id)
+                    if updated_msg and updated_msg.reply_to_msg_id:
+                        reply = await updated_msg.get_reply_message()
+                        if reply and reply.text:
+                            match_mmss = re.search(r'(\d+):(\d+)', reply.text)
+                            if match_mmss:
+                                minutes = int(match_mmss.group(1))
+                                seconds = int(match_mmss.group(2))
+                                cooldown = (minutes * 60) + seconds + 1
+                                print(f"[MEOW] Detected new cooldown: {cooldown}s")
+                except Exception as e:
+                    print(f"[MEOW] Error reading reply: {e}")
                 
             print(f"[MEOW] Waiting for {cooldown} seconds...")
             await asyncio.sleep(cooldown)
