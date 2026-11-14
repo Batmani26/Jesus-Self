@@ -123,7 +123,6 @@ async def manager_loop():
                 meow_users = await get_all_meow_active_users()
                 for mu in meow_users:
                     cid = int(mu['meow_chat_id'])
-                    # Check if task exists and is not done
                     if cid not in MEOW_TASKS or MEOW_TASKS[cid].done():
                         log.info(f"Restarting meow task for chat {cid}")
                         MEOW_TASKS[cid] = asyncio.create_task(meow_loop_wrapper(ACTIVE_CLIENTS[ADMIN_ID], cid))
