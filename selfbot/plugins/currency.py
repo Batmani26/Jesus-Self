@@ -11,30 +11,27 @@ async def get_live_prices():
     text = "💵 **قیمت‌های لحظه‌ای بازار:**\n\n"
     try:
         async with aiohttp.ClientSession(headers=headers) as session:
-            # Direct JSON from a highly reliable Iranian API
-            async with session.get("https://api.tgju.org/v1/market/indicator/summary-table-data/price_dollar_rl", timeout=10) as resp:
-                # If tgju works
-                pass
-                
-            # Using the public Bonbast API (often reliable)
-            async with session.get("https://www.bonbast.com/json", timeout=10) as resp:
+            # Primary: Nerkh.io API (free and reliable)
+            async with session.get("https://api.nerkh.io/v1/prices", timeout=15) as resp:
                 if resp.status == 200:
                     data = await resp.json()
-                    dollar = data.get('usd', {}).get('value', 0)
-                    euro = data.get('eur', {}).get('value', 0)
-                    gold18 = data.get('gol18', {}).get('value', 0)
-                    gold24 = data.get('gol24', {}).get('value', 0)
-                    emami = data.get('sekke', {}).get('value', 0)
+                    # Assuming data format: [{'symbol': 'usd', 'price': 50000}, ...]
+                    prices = {item['symbol']: item['price'] for item in data if 'symbol' in item}
+                    dollar = prices.get('usd', 0)
+                    euro = prices.get('eur', 0)
+                    gold18 = prices.get('gold18', 0)
+                    gold24 = prices.get('gold24', 0)
+                    emami = prices.get('sekke', 0)
                     
-                    text += f"🇺🇸 دلار: {dollar:,} تومان\n"
-                    text += f"🇪🇺 یورو: {euro:,} تومان\n"
-                    text += f"🥇 طلا ۱۸ عیار: {gold18:,} تومان\n"
-                    text += f"🥇 طلا ۲۴ عیار: {gold24:,} تومان\n"
-                    text += f"🪙 سکه امامی: {emami:,} تومان\n"
-                    text += "\n📊 منبع: بون‌بست"
+                    text += f"🇺🇸 دلار: {int(dollar):,} تومان\n"
+                    text += f"🇪🇺 یورو: {int(euro):,} تومان\n"
+                    text += f"🥇 طلا ۱۸ عیار: {int(gold18):,} تومان\n"
+                    text += f"🥇 طلا ۲۴ عیار: {int(gold24):,} تومان\n"
+                    text += f"🪙 سکه امامی: {int(emami):,} تومان\n"
+                    text += "\n📊 منبع: نرخ‌آی‌او"
                     return text
                     
-            # Fallback to Nobitex
+            # Fallback: Nobitex for Dollar
             async with session.get("https://api.nobitex.ir/v2/orderbook/USDTIRT", timeout=10) as resp2:
                 if resp2.status == 200:
                     data = await resp2.json()
