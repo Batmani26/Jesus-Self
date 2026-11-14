@@ -44,26 +44,25 @@ def register(client) -> None:
                     msg = await client.send_message(chat_id, "میو")
                     await asyncio.sleep(1) # wait a bit for the bot to respond
                     
-                    # Check for cooldown message (Scan last 5 messages for 'بعد از')
-                    messages = await client.get_messages(chat_id, limit=5)
+                    # Check for cooldown message by reading the reply to our message
+                    await asyncio.sleep(2) # Wait for bot to reply
+                    msg = await client.get_messages(chat_id, ids=msg.id)
                     cooldown = 60 # default
-                    for m in messages:
-                        if m.text and "بعد از" in m.text:
-                            # Pattern 1: M:SS format (e.g., 4:10)
-                            match_mmss = re.search(r'(\d+):(\d+)', m.text)
+                    if msg and msg.reply_to_msg_id:
+                        reply = await msg.get_reply_message()
+                        if reply and reply.text and "بعد از" in reply.text:
+                            match_mmss = re.search(r'(\d+):(\d+)', reply.text)
                             if match_mmss:
                                 minutes = int(match_mmss.group(1))
                                 seconds = int(match_mmss.group(2))
                                 cooldown = (minutes * 60) + seconds + 2 # 2s buffer
                             else:
-                                # Pattern 2: Persian words (e.g., 4 دقیقه و 10 ثانیه)
-                                match_words = re.search(r'(\d+)\s*(ثانیه|دقیقه)', m.text)
+                                match_words = re.search(r'(\d+)\s*(ثانیه|دقیقه)', reply.text)
                                 if match_words:
                                     val = int(match_words.group(1))
                                     if "دقیقه" in match_words.group(2):
                                         val *= 60
                                     cooldown = val + 2
-                            break
                             
                     await asyncio.sleep(cooldown)
                 except Exception as e:
