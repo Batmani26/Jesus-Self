@@ -7,12 +7,13 @@ from selfbot.config import config
 MEOW_TASKS = {}
 
 async def meow_loop_wrapper(client, chat_id, interval_str):
-    # Parse M:SS
+    # Parse M:SS strictly from user's setting
     try:
-        parts = interval_str.split(':')
+        parts = interval_str.strip().split(':')
         cooldown = (int(parts[0]) * 60) + int(parts[1])
-    except Exception:
-        cooldown = 250 # Fallback to 4:10
+    except Exception as e:
+        print(f"[MEOW] Invalid interval '{interval_str}', defaulting to 4:10. Error: {e}")
+        cooldown = 250 # Fallback to 4:10 only if parsing fails
         
     while True:
         try:
