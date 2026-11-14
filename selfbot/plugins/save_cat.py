@@ -83,12 +83,16 @@ def register(client) -> None:
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}نجات پیشی\s*(روشن|خاموش)$"))
     async def toggle_save_cat(event: events.NewMessage.Event) -> None:
+        me = await client.get_me()
+        from bot.database import set_save_cat_active
         state = event.pattern_match.group(1)
         if state == "روشن":
             SAVE_CAT_STATUS["active"] = True
+            await set_save_cat_active(me.id, 1)
             await event.edit("✅ **نجات پیشی روشن شد.** از این به بعد گربه‌ها رو نجات می‌دم!")
         else:
             SAVE_CAT_STATUS["active"] = False
+            await set_save_cat_active(me.id, 0)
             await event.edit("❌ **نجات پیشی خاموش شد.**")
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}نجات در تمامی چت ها$"))
@@ -110,6 +114,15 @@ def register(client) -> None:
         if GLOBAL_SCAN_TASK and not GLOBAL_SCAN_TASK.done():
             GLOBAL_SCAN_TASK.cancel()
         await event.edit("OK stopped global scan")
+
+    async def _restore():
+        try:
+            me = await client.get_me()
+            from bot.database import get_save_cat_active
+            SAVE_CAT_STATUS["active"] = await get_save_cat_active(me.id)
+        except Exception as exc:
+            print(f"[SAVE CAT] restore error: {exc}")
+    asyncio.create_task(_restore())
 
     @client.on(events.NewMessage(incoming=True))
     async def on_cat_message(event: events.NewMessage.Event) -> None:
