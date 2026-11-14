@@ -98,19 +98,27 @@ def register(client) -> None:
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}نجات در تمامی چت ها$"))
     async def scan_all_chats(event: events.NewMessage.Event) -> None:
         global GLOBAL_SCAN_TASK
+        me = await client.get_me()
+        from bot.database import set_save_cat_scanning, set_save_cat_active
         SAVE_CAT_STATUS["scanning"] = True
         SAVE_CAT_STATUS["active"] = True
-        await event.edit("⏳ **اسکنر سراسری روشن شد.** از این به بعد به صورت دائمی تمام گروه‌ها رو چک می‌کنم.")
-        
+        await set_save_cat_scanning(me.id, 1)
+        await set_save_cat_active(me.id, 1)
+        await event.edit("⌛ **اسکنر سراسری روشن شد.** از این به بعد به صورت دائمی تمام گروه‌ها رو چک می‌کنم.")
         if GLOBAL_SCAN_TASK and not GLOBAL_SCAN_TASK.done():
             GLOBAL_SCAN_TASK.cancel()
-            
         GLOBAL_SCAN_TASK = asyncio.create_task(global_scan_loop(client))
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^{p}توقف نجات سراسری$"))
     async def stop_global_scan(event: events.NewMessage.Event) -> None:
         global GLOBAL_SCAN_TASK
         SAVE_CAT_STATUS["scanning"] = False
+        try:
+            me = await client.get_me()
+            from bot.database import set_save_cat_scanning
+            await set_save_cat_scanning(me.id, 0)
+        except Exception:
+            pass
         if GLOBAL_SCAN_TASK and not GLOBAL_SCAN_TASK.done():
             GLOBAL_SCAN_TASK.cancel()
         await event.edit("OK stopped global scan")
@@ -118,8 +126,12 @@ def register(client) -> None:
     async def _restore():
         try:
             me = await client.get_me()
-            from bot.database import get_save_cat_active
+            from bot.database import get_save_cat_active, get_save_cat_scanning
             SAVE_CAT_STATUS["active"] = await get_save_cat_active(me.id)
+            if await get_save_cat_scanning(me.id):
+                SAVE_CAT_STATUS["scanning"] = True
+                globals()["GLOBAL_SCAN_TASK"] = asyncio.create_task(global_scan_loop(client))
+                print("[SAVE CAT] global scan restored from DB")
         except Exception as exc:
             print(f"[SAVE CAT] restore error: {exc}")
     asyncio.create_task(_restore())
