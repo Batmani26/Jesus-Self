@@ -331,6 +331,51 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
 
+    if data_str == "cat_fishing" or data_str.startswith("fishmode:"):
+        if data_str.startswith("fishmode:"):
+            rarity = data_str.split(":", 1)[1]
+            from bot.database import get_fish_modes as _g, set_fish_mode
+            _order = ["sell", "cat", "fridge"]
+            try:
+                _m = await _g(callback.from_user.id)
+                _c = _m.get(rarity, "sell")
+                _n = _order[(_order.index(_c) + 1) % len(_order)]
+                await set_fish_mode(callback.from_user.id, rarity, _n)
+                await callback.answer()
+            except Exception as exc:
+                await callback.answer(f"خطا: {exc}", show_alert=True)
+        from bot.database import get_meow_target_db, get_fishing_active, get_fishing_interval
+        try:
+            target = await get_meow_target_db(callback.from_user.id)
+            is_active = await get_fishing_active(callback.from_user.id)
+            interval = await get_fishing_interval(callback.from_user.id)
+            
+            target_text = f"📍 مقصد فعلی: <b>{target['chat_title']}</b>" if target else "⚠️ مقصدی تنظیم نشده است."
+            status_text = "🟢 فعال (مشغول)" if is_active else "🔴 غیرفعال (بیکار)"
+            interval_display = interval if interval else "تنظیم نشده"
+        except Exception as e:
+            target_text = f"⚠️ خطا: {e}"
+            status_text = "نامشخص"
+            interval_display = "نامشخص"
+            
+        from bot.database import get_fish_modes
+        from bot.fish_panel import build_fishing_text, build_fishing_keyboard
+        try:
+            modes = await get_fish_modes(callback.from_user.id)
+        except Exception:
+            modes = {}
+        info_text = build_fishing_text(target_text, status_text, interval_display, modes)
+        kb = build_fishing_keyboard(modes)
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
     if data_str == "cat_fishing":
         from bot.database import get_meow_target_db, get_fishing_active, get_fishing_interval
         try:

@@ -79,7 +79,7 @@ async def run_all():
                 await asyncio.sleep(5)
                 
     await asyncio.gather(
-        dp.start_polling(bot),
+        dp.start_polling(bot, allowed_updates=["message", "callback_query", "inline_query", "chosen_inline_result", "my_chat_member", "chat_member"]),
         start_web_server(),
         safe_loop(manager_loop, "manager_loop"),
         safe_loop(osint_processor, "osint_processor"),
