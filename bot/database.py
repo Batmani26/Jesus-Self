@@ -38,6 +38,7 @@ async def init_db():
             await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS fishing_active INTEGER DEFAULT 0")
             await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS fishing_interval TEXT")
             await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS save_cat_active INTEGER DEFAULT 0")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS save_cat_announce INTEGER DEFAULT 0")
             await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS save_cat_scanning INTEGER DEFAULT 0")
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_interval TEXT')
 
@@ -198,6 +199,19 @@ async def get_save_cat_scanning(user_id):
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS save_cat_scanning INTEGER DEFAULT 0")
         row = await conn.fetchrow("SELECT save_cat_scanning FROM users WHERE user_id = $1", user_id)
         return bool(row['save_cat_scanning']) if row and row['save_cat_scanning'] else False
+
+async def set_save_cat_announce(user_id, on):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS save_cat_announce INTEGER DEFAULT 0")
+        await conn.execute("UPDATE users SET save_cat_announce = $1 WHERE user_id = $2", on, user_id)
+
+async def get_save_cat_announce(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS save_cat_announce INTEGER DEFAULT 0")
+        row = await conn.fetchrow("SELECT save_cat_announce FROM users WHERE user_id = $1", user_id)
+        return bool(row['save_cat_announce']) if row and row['save_cat_announce'] else False
 
 async def get_all_save_cat_active_users():
     await init_db()

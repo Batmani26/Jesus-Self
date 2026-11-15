@@ -428,15 +428,18 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         status_text = "🟢 فعال (مشغول)" if SAVE_CAT_STATUS["active"] else "🔴 غیرفعال"
         if SAVE_CAT_STATUS["scanning"]:
             status_text = "🔍 در حال جستجو..."
+        announce_text = ("🟢 فعال") if SAVE_CAT_STATUS.get("announce", False) else ("🔴 غیرفعال")
             
         info_text = (
             "🐈 <b>نجات پیشی</b>\n\n"
             f"📊 <b>وضعیت:</b> {status_text}\n\n"
+            f"📢 <b>اعلام نجات:</b> {announce_text}\n\n"
             "<blockquote>با فعال کردن این قابلیت، سلف‌بات به صورت خودکار روی دکمه «نجات پیشی» در پیام‌های ربات میویی کلیک می‌کند تا گربه‌ها را نجات دهد.</blockquote>\n\n"
             "<b>دستورات:</b>\n"
             "<code>.نجات پیشی روشن</code> (برای شروع)\n"
             "<code>.نجات پیشی خاموش</code> (برای توقف)\n"
-            "<code>.نجات در تمامی چت ها</code> (جستجوی همه گروه‌ها)\n\n"
+            "<code>.نجات در تمامی چت ها</code> (جستجوی همه گروه‌ها)\n"
+            "<code>.اعلام نجات [روشن/خاموش]</code> (اعلام در Saved Messages)\n\n"
             "👇 برای کپی، روی هر دستور کلیک کنید."
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[

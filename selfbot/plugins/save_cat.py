@@ -3,7 +3,7 @@ import asyncio
 from telethon import events
 from selfbot.config import config
 
-SAVE_CAT_STATUS = {"active": False, "scanning": False}
+SAVE_CAT_STATUS = {"active": False, "scanning": False, "announce": False}
 GLOBAL_SCAN_TASK = None
 _CLICKED = set()
 _INFLIGHT = set()
@@ -51,6 +51,11 @@ async def _try_rescue(client, chat_id, msg):
             try:
                 await target.click()
                 print(f"[SAVE CAT] clicked rescue in {chat_id} (try {attempt+1})")
+                if SAVE_CAT_STATUS.get("announce"):
+                    try:
+                        await client.send_message("me", f"🐈 **پیشی نجات پیدا کرد!**\n\n📍 چت: \n" + str(chat_id))
+                    except Exception as exc:
+                        print(f"[SAVE CAT] announce error: {exc}")
             except Exception as exc:
                 print(f"[SAVE CAT] click error: {exc}")
             await asyncio.sleep(0.2)
@@ -95,6 +100,19 @@ def register(client) -> None:
             await set_save_cat_active(me.id, 0)
             await event.edit("❌ **نجات پیشی خاموش شد.**")
 
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}اعلان نجات\s*(روشن|خاموش)$"))
+    async def toggle_announce(event: events.NewMessage.Event) -> None:
+        me = await client.get_me()
+        from bot.database import set_save_cat_announce
+        state = event.pattern_match.group(1)
+        on = 1 if state == "روشن" else 0
+        await set_save_cat_announce(me.id, on)
+        SAVE_CAT_STATUS["announce"] = bool(on)
+        if on:
+            await event.edit("✅ **اعلام نجات روشن شد.** هر پیشی که نجات بدم توی Saved Messages اعلام می‌شه.")
+        else:
+            await event.edit("❌ **اعلام نجات خاموش شد.**")
+
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}نجات در تمامی چت ها$"))
     async def scan_all_chats(event: events.NewMessage.Event) -> None:
         global GLOBAL_SCAN_TASK
@@ -128,6 +146,8 @@ def register(client) -> None:
             me = await client.get_me()
             from bot.database import get_save_cat_active, get_save_cat_scanning
             SAVE_CAT_STATUS["active"] = await get_save_cat_active(me.id)
+            from bot.database import get_save_cat_announce
+            SAVE_CAT_STATUS["announce"] = await get_save_cat_announce(me.id)
             if await get_save_cat_scanning(me.id):
                 SAVE_CAT_STATUS["scanning"] = True
                 globals()["GLOBAL_SCAN_TASK"] = asyncio.create_task(global_scan_loop(client))
