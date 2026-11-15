@@ -13,10 +13,11 @@ async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None):
         parts = interval_str.strip().split(':')
         cooldown = (int(parts[0]) * 60) + int(parts[1])
         if cooldown <= 0:
-            return
+            raise ValueError()
     except Exception:
         return
-        
+    loop = asyncio.get_event_loop()
+    next_send = loop.time() + cooldown
     while True:
         try:
             if user_id is None:
@@ -24,10 +25,13 @@ async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None):
                 owner_id = me.id
             else:
                 owner_id = user_id
+            delay = next_send - loop.time()
+            if delay > 0:
+                await asyncio.sleep(delay)
             while not client.is_connected():
                 await asyncio.sleep(2)
-                
             sent = await client.send_message(chat_id, "ماهی")
+            print(f"[FISH] sent ماهی to {chat_id}")
             try:
                 from bot.database import get_fish_modes
                 modes = await get_fish_modes(owner_id)
@@ -35,14 +39,18 @@ async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None):
                 modes = {}
             try:
                 from selfbot.plugins.fish_actions import handle_catch
-                await handle_catch(client, chat_id, sent.id, modes)
+                result = await handle_catch(client, chat_id, sent.id, modes)
+                print(f"[FISH] result {result}")
             except Exception as exc:
                 print(f"[FISH] action error: {exc}")
-            await asyncio.sleep(cooldown)
+            next_send += cooldown
+            if next_send < loop.time():
+                next_send = loop.time() + cooldown
         except asyncio.CancelledError:
             break
-        except Exception:
-            await asyncio.sleep(2)
+        except Exception as exc:
+            print(f"[FISH ERROR] {exc}")
+            await asyncio.sleep(3)
 
 def register(client) -> None:
     p = config.PREFIX

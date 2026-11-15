@@ -47,10 +47,14 @@ async def _find_bot_reply(client, chat_id, sent_msg_id):
     for m in messages or []:
         if getattr(m, "reply_to_msg_id", None) == sent_msg_id:
             return m
+    for m in messages or []:
+        txt = getattr(m, "text", "") or ""
+        if ("سطح" in txt) and (("ماهی" in txt) or ("گرفتی" in txt)):
+            return m
     return None
 
 
-async def handle_catch(client, chat_id, sent_msg_id, modes, timeout=20):
+async def handle_catch(client, chat_id, sent_msg_id, modes, timeout=40):
     waited = 0.0
     while waited < timeout:
         await asyncio.sleep(1.5)
