@@ -78,10 +78,11 @@ async def global_scan_loop(client):
                                 await _try_rescue(client, dialog.id, msg)
                     except Exception:
                         pass
-            await asyncio.sleep(1) # Wait before next full scan
+            await asyncio.sleep(20)
         except Exception as e:
             print(f"[SAVE CAT GLOBAL] Error: {e}")
-            await asyncio.sleep(5)
+            txt = str(e).lower()
+            await asyncio.sleep(60 if "flood" in txt else 5)
 
 def register(client) -> None:
     p = config.PREFIX

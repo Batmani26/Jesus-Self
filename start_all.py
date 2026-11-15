@@ -67,6 +67,11 @@ async def run_all():
     log.info("Connecting to database...")
     await init_db()
     log.info("Starting Management Bot and Selfbot...")
+    try:
+        await bot.delete_webhook(drop_pending_updates=True)
+        log.info("Webhook cleared, pending updates dropped")
+    except Exception as exc:
+        log.warning(f"Could not clear webhook: {exc}")
     
     async def safe_loop(loop_func, name):
         while True:
