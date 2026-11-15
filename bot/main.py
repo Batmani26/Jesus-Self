@@ -784,6 +784,7 @@ async def cmd_apology(message: Message):
     if message.from_user.id != ADMIN_ID:
         await message.answer("⛔ شما دسترسی به این دستور را ندارید.")
         return
+    await message.answer("⏳ در حال ارسال اطلاعیه...")
     apology = (
         "🙏 **اطلاعیهٔ رسمی Jesus Self**" + NL + NL
         + "کاربر گرامی،" + NL + NL
