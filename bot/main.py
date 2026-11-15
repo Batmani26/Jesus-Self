@@ -460,7 +460,8 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         from bot.database import get_meow_target_db, get_meow_active, get_meow_interval
         try:
             target = await get_meow_target_db(callback.from_user.id)
-            is_active = await get_meow_active(callback.from_user.id)
+            interval = await get_meow_interval(callback.from_user.id)
+            is_active = await get_meow_active(callback.from_user.id) and bool(interval)
             if target:
                 status_text = "🟢 فعال (مشغول)" if is_active else "🔴 غیرفعال (بیکار)"
                 target_text = f"📍 مقصد فعلی: <b>{target['chat_title']}</b>\n📊 وضعیت: {status_text}"
@@ -469,8 +470,6 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         except Exception as e:
             target_text = f"⚠️ خطا در خواندن مقصد: {e}"
         
-        from bot.database import get_meow_interval
-        interval = await get_meow_interval(callback.from_user.id)
         interval_display = interval if interval else "تنظیم نشده"
         info_text = (
             "🤖 <b>میو خودکار</b>\n\n"
