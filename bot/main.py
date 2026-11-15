@@ -15,7 +15,9 @@ from bot.database import add_user, get_user, set_user_phone, save_session, get_y
 from bot.login import send_code, verify_code, verify_password
 
 import os as _os
-BOT_TOKEN = _os.getenv("BOT_TOKEN", "9117892584:AAElhCnxYZC0laCkLVYM5XqmZKYceWWgmZI")
+BOT_TOKEN = _os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN is not set in environment variables.")
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
@@ -23,7 +25,7 @@ dp = Dispatcher()
 
 # آیدی عددی ادمین (خودت) رو اینجا بذار تا پیام لاگین رو برات بفرسته
 # برای پیدا کردن آیدی خودت میتونی از ربات @userinfobot استفاده کنی
-ADMIN_ID = int(_os.getenv("ADMIN_ID", "7099566033"))
+ADMIN_ID = int(_os.getenv("ADMIN_ID", "0"))
 MAINTENANCE_MODE = False
 
 USER_STATES = {}
