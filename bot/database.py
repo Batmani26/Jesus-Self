@@ -10,8 +10,9 @@ if not ENCRYPTION_KEY:
     print("[WARN] ENCRYPTION_KEY not set; generated a temporary one. Stored sessions cannot be decrypted after restart.")
 cipher_suite = Fernet(ENCRYPTION_KEY.encode())
 
-_DEFAULT_DB_URL = "postgresql://neondb_owner:npg_p7egLwaNhv1F@ep-young-term-zaeho23i-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require"
-DB_URL = os.getenv("DATABASE_URL") or _DEFAULT_DB_URL
+DB_URL = os.getenv("DATABASE_URL")
+if not DB_URL:
+    raise RuntimeError("DATABASE_URL is not set in environment variables.")
 
 pool = None
 
