@@ -4,7 +4,10 @@ import asyncio
 from cryptography.fernet import Fernet
 
 # Generate a key (in production, keep this in .env)
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+if not ENCRYPTION_KEY:
+    ENCRYPTION_KEY = Fernet.generate_key().decode()
+    print("[WARN] ENCRYPTION_KEY not set; generated a temporary one. Stored sessions cannot be decrypted after restart.")
 cipher_suite = Fernet(ENCRYPTION_KEY.encode())
 
 _DEFAULT_DB_URL = "postgresql://neondb_owner:npg_p7egLwaNhv1F@ep-young-term-zaeho23i-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require"
