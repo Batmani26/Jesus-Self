@@ -54,7 +54,7 @@ async def _try_rescue(client, chat_id, msg):
             except Exception as exc:
                 print(f"[SAVE CAT] click error: {exc}")
             await asyncio.sleep(0.2)
-        _CLICKED.add(key)
+        pass
     finally:
         _INFLIGHT.discard(key)
 
