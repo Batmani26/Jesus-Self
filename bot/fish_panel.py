@@ -46,7 +46,7 @@ def build_fishing_keyboard(modes: dict) -> InlineKeyboardMarkup:
         rows.append([
             InlineKeyboardButton(
                 text=f"{emoji} {name}: {memoji} {mname}",
-                callback_data=f"fishmode:{rarity}",
+                callback_data=f"cat_fishmode:{rarity}",
             )
         ])
     rows.append([

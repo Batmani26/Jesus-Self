@@ -331,8 +331,8 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
 
-    if data_str == "cat_fishing" or data_str.startswith("fishmode:"):
-        if data_str.startswith("fishmode:"):
+    if data_str == "cat_fishing" or data_str.startswith("cat_fishmode:"):
+        if data_str.startswith("cat_fishmode:"):
             rarity = data_str.split(":", 1)[1]
             from bot.database import get_fish_modes as _g, set_fish_mode
             _order = ["sell", "cat", "fridge"]
@@ -409,7 +409,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
 
-    if data_str.startswith("fishmode:"):
+    if data_str.startswith("cat_fishmode:"):
         rarity = data_str.split(":", 1)[1]
         from bot.database import get_fish_modes, set_fish_mode
         order = ["sell", "cat", "fridge"]
