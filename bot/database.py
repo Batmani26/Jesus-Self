@@ -68,8 +68,8 @@ async def get_decrypted_session(user_id):
             try:
                 return cipher_suite.decrypt(row['session_string'].encode()).decode()
             except Exception:
-                # Fallback for old plaintext sessions
-                return row['session_string']
+                print(f"[DB] session decrypt failed for {user_id}; user must re-login.")
+                return None
         return None
 
 async def set_user_phone(user_id, phone):
