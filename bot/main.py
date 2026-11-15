@@ -756,6 +756,57 @@ async def cmd_users(message: Message):
         text += f"👤 {u['first_name']} | 🆔 `{u['user_id']}`\n📱 {u['phone_number']} | 💎 {u['yaqoot_balance']}\n➖➖➖➖➖\n"
     await message.answer(text, parse_mode="Markdown")
 
+@dp.message(Command("broadcast"))
+async def cmd_broadcast(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⛔ شما دسترسی به این دستور را ندارید.")
+        return
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("استفاده: `/broadcast متن پیام`", parse_mode="Markdown")
+        return
+    body = parts[1]
+    users = await get_all_active_users()
+    sent, failed = 0, 0
+    status = await message.answer(f"📤 در حال ارسال به {len(users)} کاربر...")
+    for u in users:
+        try:
+            await bot.send_message(u['user_id'], body, parse_mode="Markdown")
+            sent += 1
+        except Exception:
+            failed += 1
+        await asyncio.sleep(0.05)
+    await status.edit_text(f"✅ ارسال شد: {sent}{NL}❌ ناموفق: {failed}")
+
+
+@dp.message(Command("apology"))
+async def cmd_apology(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⛔ شما دسترسی به این دستور را ندارید.")
+        return
+    apology = (
+        "🙏 **اطلاعیهٔ رسمی Jesus Self**" + NL + NL
+        + "کاربر گرامی،" + NL + NL
+        + "در راستای **افزایش امنیت حساب و سلف‌بات شما**، کلید رمزنگاری سشن‌ها به‌روزرسانی شد." + NL
+        + "به همین دلیل، سشن‌های ذخیره‌شدهٔ قبلی قابل بازیابی نیستند و لازم است **یک بار** دوباره وارد حساب خود شوید." + NL + NL
+        + "🔒 این تغییر برای **محافظت از اطلاعات شما** انجام شده است." + NL
+        + "⏱ کل فرایند ورود کمتر از ۱ دقیقه طول می‌کشد." + NL + NL
+        + "از صبر و همراهی شما سپاسگزاریم." + NL
+        + "تیم Jesus Self"
+    )
+    users = await get_all_active_users()
+    sent, failed = 0, 0
+    status = await message.answer(f"📤 در حال ارسال اطلاعیه به {len(users)} کاربر...")
+    for u in users:
+        try:
+            await bot.send_message(u['user_id'], apology, parse_mode="Markdown")
+            sent += 1
+        except Exception:
+            failed += 1
+        await asyncio.sleep(0.05)
+    await status.edit_text(f"✅ ارسال شد: {sent}{NL}❌ ناموفق: {failed}")
+
+
 @dp.message(Command("charge"))
 async def cmd_charge(message: Message):
     if message.from_user.id != ADMIN_ID:
