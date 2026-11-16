@@ -154,11 +154,14 @@ async def get_pollinations_response(prompt: str, system: str = "") -> str | None
 
 
 SYSTEM_PROMPT = (
-    "You are 'جیزس' (Jesus), the AI assistant of the 'Jesus Self' Telegram bot. "
-    "You are proud to be part of Jesus Self. If asked, praise Jesus Self for its speed, security, and features. "
-    "Answer concisely in Persian (فارسی). Be helpful, accurate and friendly. "
-    "If unsure, say so honestly. "
-    "When web search results are provided, use them as the source of truth and cite them briefly."
+    "You are 'جیزس' (Jesus), a warm, friendly and knowledgeable AI assistant in a Telegram bot. "
+    "Always answer in fluent Persian (فارسی). Be conversational, warm and helpful — like a smart friend. "
+    "Give a clear, complete answer (not too short). "
+    "Do NOT mention or advertise any brand/bot name; never write promotional lines. "
+    "When web search results are provided, rely on them as the source of truth, extract the exact numbers/answers, "
+    "answer the user's question directly FIRST, and then at the very end list the source link(s) on a new line as: "
+    "'🔗 منبع: <url>'. "
+    "If the data isn't in the results, say so honestly and suggest the best source."
 )
 
 
@@ -326,30 +329,66 @@ async def _web_search(query: str) -> str:
         except Exception:
             pass
 
-    # 2) DuckDuckGo HTML results
+    # 2) Live Iran FX (USD->Toman/Rial) via public JSON APIs
+    if any(w in ql for w in ("دلار", "ریال", "تومان", "usd", "irr")):
+        for fxurl in (
+            "https://api.tgju.org/v1/market/indicator/summary-table-data/price_dollar_rl",
+            "https://call1.tgju.org/ajax.json",
+        ):
+            try:
+                raw = await _fetch(fxurl, proxy)
+                if raw and len(raw) < 20000:
+                    import json as _json
+                    d = _json.loads(raw)
+                    # try common shapes
+                    price = None
+                    if isinstance(d, dict):
+                        cur = d.get("current") or d.get("price") or {}
+                        if isinstance(cur, dict):
+                            price = cur.get("p") or cur.get("price")
+                    if price:
+                        parts.append(f"نرخ دلار (ریال، منبع TGJU): {price}")
+                        break
+            except Exception:
+                continue
+
+    # 3) DuckDuckGo HTML results (with source links)
     try:
         from urllib.parse import quote as _q
         import re as _re
         html = await _fetch("https://html.duckduckgo.com/html/?q=" + _q(query), proxy)
         if html:
-            # extract result titles + snippets
             snippets = _re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', html, _re.S)
             titles = _re.findall(r'class="result__a"[^>]*>(.*?)</a>', html, _re.S)
+            hrefs = _re.findall(r'class="result__a"[^>]*href="(.*?)"', html, _re.S)
             def _clean(x):
                 x = _re.sub(r'<[^>]+>', '', x)
                 return _re.sub(r'\s+', ' ', x).strip()
+            def _real_url(h):
+                m2 = _re.search(r'uddg=([^&]+)', h)
+                if m2:
+                    from urllib.parse import unquote as _u
+                    return _u(m2.group(1))
+                return h if h.startswith("http") else ""
             lines = []
+            srcs = []
             for i in range(min(5, len(snippets))):
                 t = _clean(titles[i]) if i < len(titles) else ""
                 sn = _clean(snippets[i])
                 if sn:
                     lines.append(f"- {t}: {sn}" if t else f"- {sn}")
+                if i < len(hrefs):
+                    u = _real_url(hrefs[i])
+                    if u and u not in srcs:
+                        srcs.append(u)
             if lines:
                 parts.append("نتایج جستجوی وب:\n" + "\n".join(lines))
+            if srcs:
+                parts.append("لینک منابع:\n" + "\n".join(srcs[:3]))
     except Exception as e:
         print(f"[AI-web] ddg error: {e}")
 
-    return "\n\n".join(parts)[:2500]
+    return "\n\n".join(parts)[:2800]
 
 
 async def get_ai_response(prompt: str) -> str:
