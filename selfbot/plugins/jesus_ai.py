@@ -299,108 +299,132 @@ async def _download_bytes(url: str) -> bytes | None:
     return None
 
 
-async def _fetch(url: str, proxy, retries: int = 3) -> str | None:
+async def _fetch(url: str, proxy, retries: int = 1, timeout: float = 6.0) -> str | None:
+    """Fast single-attempt fetch (proxy then direct). Keep timeouts short for speed."""
     s = await _get_session()
-    for attempt in range(retries):
-        for p in ([proxy, None] if proxy else [None]):
-            try:
-                async with s.get(url, proxy=p, timeout=aiohttp.ClientTimeout(total=12),
-                                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}) as r:
-                    if r.status == 200:
-                        return await r.text(errors="ignore")
-                    if r.status == 429:
-                        await asyncio.sleep(2 + attempt * 2)
-                        continue
-                    if r.status >= 500:
-                        await asyncio.sleep(1)
-                        continue
-            except Exception as e:
-                print(f"[AI-web] fetch {'proxy' if p else 'direct'} fail {url[:40]}: {type(e).__name__}")
-                continue
-        await asyncio.sleep(1)
+    for p in ([proxy, None] if proxy else [None]):
+        try:
+            async with s.get(url, proxy=p, timeout=aiohttp.ClientTimeout(total=timeout),
+                             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}) as r:
+                if r.status == 200:
+                    return await r.text(errors="ignore")
+        except Exception:
+            continue
+    return None
+
+
+async def _ddg_snippets(query: str, proxy) -> str | None:
+    from urllib.parse import quote as _q
+    import re as _re
+    html = await _fetch("https://html.duckduckgo.com/html/?q=" + _q(query), proxy)
+    if not html:
+        return None
+    snippets = _re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', html, _re.S)
+    titles = _re.findall(r'class="result__a"[^>]*>(.*?)</a>', html, _re.S)
+    hrefs = _re.findall(r'class="result__a"[^>]*href="(.*?)"', html, _re.S)
+    def _clean(x):
+        x = _re.sub(r'<[^>]+>', '', x)
+        return _re.sub(r'\s+', ' ', x).strip()
+    def _real_url(h):
+        m2 = _re.search(r'uddg=([^&]+)', h)
+        if m2:
+            from urllib.parse import unquote as _u
+            return _u(m2.group(1))
+        return h if h.startswith("http") else ""
+    lines, srcs = [], []
+    for i in range(min(5, len(snippets))):
+        t = _clean(titles[i]) if i < len(titles) else ""
+        sn = _clean(snippets[i])
+        if sn:
+            lines.append(f"- {t}: {sn}" if t else f"- {sn}")
+        if i < len(hrefs):
+            u = _real_url(hrefs[i])
+            if u and u not in srcs:
+                srcs.append(u)
+    out = ""
+    if lines:
+        out += "نتایج جستجوی وب:\n" + "\n".join(lines)
+    if srcs:
+        out += "\nلینک منابع:\n" + "\n".join(srcs[:3])
+    return out or None
+
+
+async def _fx_usd_irr(proxy) -> str | None:
+    # Fast free FX sources; try in parallel, first that yields wins
+    async def _erapi():
+        raw = await _fetch("https://open.er-api.com/v6/latest/USD", proxy)
+        if not raw:
+            return None
+        try:
+            import json as _json
+            d = _json.loads(raw)
+            irr = d.get("rates", {}).get("IRR")
+            if irr:
+                toman = round(irr / 10)
+                return f"نرخ دلار: {irr:,.0f} ریال ({toman:,.0f} تومان) — منبع: open.er-api.com"
+        except Exception:
+            return None
+        return None
+
+    async def _tgju():
+        raw = await _fetch("https://call1.tgju.org/ajax.json", proxy, timeout=5)
+        if not raw:
+            return None
+        try:
+            import json as _json
+            d = _json.loads(raw)
+            cur = d.get("current", {})
+            p = None
+            for k in ("price_dollar_rl",):
+                node = cur.get(k, {})
+                if isinstance(node, dict):
+                    p = node.get("p")
+            if p:
+                return f"نرخ دلار (بازار آزاد، TGJU): {p} ریال"
+        except Exception:
+            return None
+        return None
+
+    tasks = [asyncio.create_task(_erapi()), asyncio.create_task(_tgju())]
+    for coro in asyncio.as_completed(tasks):
+        try:
+            r = await coro
+        except Exception:
+            r = None
+        if r:
+            for t in tasks:
+                if not t.done():
+                    t.cancel()
+            return r
     return None
 
 
 async def _web_search(query: str) -> str:
-    """Return a compact text digest of web results (DDG HTML + currency API)."""
+    """Fast parallel web digest: FX + DDG snippets, hard-capped to ~6s."""
     s = await _get_session()
     proxy = getattr(s, "_magnum_proxy", None)
-    parts = []
-
-    # 1) Live currency (free, no key) for price queries
     ql = query.lower()
-    if any(w in ql for w in ("دلار", "یورو", "usd", "eur", "درهم", "لیر", "price", "نرخ")):
-        try:
-            from urllib.parse import quote as _q
-            fr = await _fetch("https://api.frankfurter.app/latest?from=USD&to=EUR,GBP,TRY,AED", proxy)
-            if fr:
-                import json as _json
-                d = _json.loads(fr).get("rates", {})
-                if d:
-                    parts.append("نرخ ارز (Frankfurter, base USD): " + ", ".join(f"{k}={v}" for k, v in d.items()))
-        except Exception:
-            pass
+    jobs = []
+    if any(w in ql for w in ("دلار", "ریال", "تومان", "usd", "irr", "price", "نرخ", "یورو", "eur")):
+        jobs.append(asyncio.create_task(_fx_usd_irr(proxy)))
+    jobs.append(asyncio.create_task(_ddg_snippets(query, proxy)))
 
-    # 2) Live Iran FX (USD->Toman/Rial) via public JSON APIs
-    if any(w in ql for w in ("دلار", "ریال", "تومان", "usd", "irr")):
-        for fxurl in (
-            "https://api.tgju.org/v1/market/indicator/summary-table-data/price_dollar_rl",
-            "https://call1.tgju.org/ajax.json",
-        ):
-            try:
-                raw = await _fetch(fxurl, proxy)
-                if raw and len(raw) < 20000:
-                    import json as _json
-                    d = _json.loads(raw)
-                    # try common shapes
-                    price = None
-                    if isinstance(d, dict):
-                        cur = d.get("current") or d.get("price") or {}
-                        if isinstance(cur, dict):
-                            price = cur.get("p") or cur.get("price")
-                    if price:
-                        parts.append(f"نرخ دلار (ریال، منبع TGJU): {price}")
-                        break
-            except Exception:
-                continue
-
-    # 3) DuckDuckGo HTML results (with source links)
+    parts = []
     try:
-        from urllib.parse import quote as _q
-        import re as _re
-        html = await _fetch("https://html.duckduckgo.com/html/?q=" + _q(query), proxy)
-        if html:
-            snippets = _re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', html, _re.S)
-            titles = _re.findall(r'class="result__a"[^>]*>(.*?)</a>', html, _re.S)
-            hrefs = _re.findall(r'class="result__a"[^>]*href="(.*?)"', html, _re.S)
-            def _clean(x):
-                x = _re.sub(r'<[^>]+>', '', x)
-                return _re.sub(r'\s+', ' ', x).strip()
-            def _real_url(h):
-                m2 = _re.search(r'uddg=([^&]+)', h)
-                if m2:
-                    from urllib.parse import unquote as _u
-                    return _u(m2.group(1))
-                return h if h.startswith("http") else ""
-            lines = []
-            srcs = []
-            for i in range(min(5, len(snippets))):
-                t = _clean(titles[i]) if i < len(titles) else ""
-                sn = _clean(snippets[i])
-                if sn:
-                    lines.append(f"- {t}: {sn}" if t else f"- {sn}")
-                if i < len(hrefs):
-                    u = _real_url(hrefs[i])
-                    if u and u not in srcs:
-                        srcs.append(u)
-            if lines:
-                parts.append("نتایج جستجوی وب:\n" + "\n".join(lines))
-            if srcs:
-                parts.append("لینک منابع:\n" + "\n".join(srcs[:3]))
+        done, pending = await asyncio.wait(jobs, timeout=6.0)
+        for t in pending:
+            t.cancel()
+        for t in jobs:
+            if t.done() and not t.cancelled():
+                try:
+                    r = t.result()
+                except Exception:
+                    r = None
+                if r:
+                    parts.append(r)
     except Exception as e:
-        print(f"[AI-web] ddg error: {e}")
-
-    return "\n\n".join(parts)[:2800]
+        print(f"[AI-web] search error: {e}")
+    return "\n\n".join(parts)[:2600]
 
 
 async def get_ai_response(prompt: str) -> str:
@@ -414,7 +438,7 @@ async def get_ai_response(prompt: str) -> str:
 
     async def try_one(name, fn):
         try:
-            return await asyncio.wait_for(fn(prompt, SYSTEM_PROMPT), timeout=20)
+            return await asyncio.wait_for(fn(prompt, SYSTEM_PROMPT), timeout=12)
         except Exception:
             return None
 
