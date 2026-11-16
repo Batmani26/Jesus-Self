@@ -385,17 +385,25 @@ async def _fx_usd_irr(proxy) -> str | None:
             return None
         return None
 
-    tasks = [asyncio.create_task(_erapi()), asyncio.create_task(_tgju())]
-    for coro in asyncio.as_completed(tasks):
-        try:
-            r = await coro
-        except Exception:
-            r = None
-        if r:
-            for t in tasks:
-                if not t.done():
-                    t.cancel()
-            return r
+    # Prefer TGJU (Iranian free-market rate) — it is the accurate source for Iran.
+    # Fall back to open.er-api (global official rate) only if TGJU fails.
+    tgju_task = asyncio.create_task(_tgju())
+    erapi_task = asyncio.create_task(_erapi())
+    try:
+        r = await asyncio.wait_for(tgju_task, timeout=5.0)
+    except Exception:
+        r = None
+    if r:
+        if not erapi_task.done():
+            erapi_task.cancel()
+        return r
+    # TGJU failed → use er-api (mark it as global/official, not free-market)
+    try:
+        r2 = await asyncio.wait_for(erapi_task, timeout=5.0)
+    except Exception:
+        r2 = None
+    if r2:
+        return r2 + " (نرخ جهانی/رسمی — بازار آزاد ایران معمولاً بالاتر است)"
     return None
 
 
