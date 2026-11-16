@@ -3,9 +3,15 @@ from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
 
-# You can change these to your own API credentials. 2040 is a well-known public one.
-API_ID = 2040
-API_HASH = 'b18441a1ff607e10a989891a5462e627'
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+# Read API credentials from environment (never hardcode secrets)
+API_ID = int(os.getenv("API_ID", "0"))
+API_HASH = os.getenv("API_HASH", "")
+if not API_ID or not API_HASH:
+    raise RuntimeError("API_ID / API_HASH missing. Fill them in .env")
 
 async def send_code(phone):
     client = TelegramClient(StringSession(), API_ID, API_HASH)

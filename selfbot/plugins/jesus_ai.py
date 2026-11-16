@@ -1,85 +1,196 @@
-"""Jesus AI plugin: `.جیزس <text>` chats with an AI assistant."""
+"""Jesus AI plugin: `.جیزس <text>` — multi-provider AI with Grok, Gemini, Groq.
+
+Optimizations:
+- Shared aiohttp session (connection pooling) → much faster
+- Parallel race: fastest provider wins
+- Grok (xAI) support
+- Robust error handling + retry
+"""
 import aiohttp
+import asyncio
 import os
-import json
 from telethon import events
 from selfbot.config import config
 
-# API Keys from environment variables
+# API keys
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+XAI_API_KEY = os.getenv("XAI_API_KEY", "")  # Grok
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
-async def get_groq_response(prompt: str) -> str:
+# Shared HTTP session (created lazily) — connection pooling for speed
+_session: aiohttp.ClientSession | None = None
+
+
+async def _get_session() -> aiohttp.ClientSession:
+    global _session
+    if _session is None or _session.closed:
+        # Optional outbound proxy for filtered regions (e.g. Iran).
+        # Set AI_PROXY=socks5://127.0.0.1:10808 (v2rayN local SOCKS) or
+        # AI_PROXY=http://127.0.0.1:10809 in .env to route AI requests via your VPN.
+        proxy = os.getenv("AI_PROXY", "").strip() or None
+        _session = aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=25),
+            connector=aiohttp.TCPConnector(limit=50, ttl_dns_cache=300),
+        )
+        _session._magnum_proxy = proxy
+    return _session
+
+
+async def _post_json(url: str, headers: dict, data: dict) -> dict | None:
+    s = await _get_session()
+    proxy = getattr(s, "_magnum_proxy", None)
+    # Try proxy first, then fall back to direct if proxy is dead
+    for p in ([proxy, None] if proxy else [None]):
+        try:
+            async with s.post(url, headers=headers, json=data, proxy=p) as resp:
+                if resp.status == 200:
+                    return await resp.json()
+                if resp.status >= 400:
+                    body = await resp.text()
+                    print(f"[AI] {url.split('/')[2]} HTTP {resp.status}: {body[:150]}")
+                    return None
+        except Exception as e:
+            print(f"[AI] post {'proxy' if p else 'direct'} fail {url.split('/')[2]}: {type(e).__name__}")
+            continue
+    return None
+
+
+async def get_grok_response(prompt: str, system: str = "") -> str | None:
+    """xAI Grok via OpenAI-compatible endpoint."""
+    if not XAI_API_KEY:
+        return None
+    url = "https://api.x.ai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {XAI_API_KEY}", "Content-Type": "application/json"}
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    data = {"model": "grok-2-latest", "messages": messages, "temperature": 0.7, "max_tokens": 1024}
+    res = await _post_json(url, headers, data)
+    if res:
+        try:
+            return res["choices"][0]["message"]["content"]
+        except (KeyError, IndexError):
+            pass
+    return None
+
+
+async def get_groq_response(prompt: str, system: str = "") -> str | None:
     if not GROQ_API_KEY:
         return None
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-    data = {
-        "model": "llama3-70b-8192",
-        "messages": [{"role": "user", "content": prompt}]
-    }
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=data, timeout=15) as resp:
-                if resp.status == 200:
-                    res_json = await resp.json()
-                    return res_json['choices'][0]['message']['content']
-    except Exception:
-        pass
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    data = {"model": "llama-3.3-70b-versatile", "messages": messages, "max_tokens": 1024}
+    res = await _post_json(url, headers, data)
+    if res:
+        try:
+            return res["choices"][0]["message"]["content"]
+        except (KeyError, IndexError):
+            pass
     return None
 
-async def get_gemini_response(prompt: str) -> str:
+
+async def get_gemini_response(prompt: str, system: str = "") -> str | None:
     if not GEMINI_API_KEY:
         return None
-    # Updated to the correct endpoint
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
-    data = {"contents": [{"parts": [{"text": prompt}]}]}
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=data, timeout=20) as resp:
-                if resp.status == 200:
-                    res_json = await resp.json()
-                    return res_json['candidates'][0]['content']['parts'][0]['text']
-                else:
-                    print(f"Gemini Error: {resp.status} - {await resp.text()}")
-    except Exception as e:
-        print(f"Gemini Exception: {e}")
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    )
+    contents = [{"role": "user", "parts": [{"text": prompt}]}]
+    data = {"contents": contents}
+    if system:
+        data["systemInstruction"] = {"parts": [{"text": system}]}
+    res = await _post_json(url, {}, data)
+    if res:
+        try:
+            return res["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError):
+            pass
     return None
 
-async def get_ai_response(prompt: str) -> str:
-    # We enforce a system prompt to make the AI answer better in Persian and praise Jesus Self
-    system_prompt = (
-        "You are 'جیزس' (Jesus), the AI assistant of the 'Jesus Self' Telegram bot. "
-        "You are proud to be part of Jesus Self. If asked, praise Jesus Self for its speed, security, and features. "
-        "Answer concisely in Persian. "
-        "If the user asks about current events or prices, use your knowledge but clearly state if you are not sure."
-    )
-    full_prompt = f"{system_prompt}\n\nUser: {prompt}"
 
-    # Try Gemini first (better quality for Persian)
-    res = await get_gemini_response(full_prompt)
+async def get_openai_response(prompt: str, system: str = "") -> str | None:
+    if not OPENAI_API_KEY:
+        return None
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    data = {"model": "gpt-4o-mini", "messages": messages, "max_tokens": 1024}
+    res = await _post_json(url, headers, data)
     if res:
-        return res
-        
-    # Fallback to Groq
-    res = await get_groq_response(full_prompt)
-    if res:
-        return res
-        
-    # Fallback to Pollinations (simpler prompt to avoid rate limits)
-    url = f"https://text.pollinations.ai/{prompt}?model=openai"
+        try:
+            return res["choices"][0]["message"]["content"]
+        except (KeyError, IndexError):
+            pass
+    return None
+
+
+async def get_pollinations_response(prompt: str, system: str = "") -> str | None:
+    """Free fallback (no API key needed)."""
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=30) as response:
-                if response.status == 200:
-                    return await response.text()
-                else:
-                    print(f"Pollinations Error: {response.status}")
+        s = await _get_session()
+        full = f"{system}\n\nUser: {prompt}" if system else prompt
+        from urllib.parse import quote as _q
+        proxy = getattr(s, "_magnum_proxy", None)
+        async with s.get(
+            "https://text.pollinations.ai/" + _q(full, safe="") + "?model=openai",
+            timeout=aiohttp.ClientTimeout(total=30),
+            proxy=proxy,
+        ) as resp:
+            if resp.status == 200:
+                return await resp.text()
     except Exception as e:
-        print(f"Pollinations Exception: {e}")
-        
-    # Ultimate fallback to a generic message
-    return "❌ متاسفانه در حال حاضر سرویس‌های هوش مصنوعی پاسخ ندادن. (ممکنه به خاطر محدودیت درخواست باشه، لطفاً چند دقیقه دیگه امتحان کن)"
+        print(f"[AI] pollinations error: {e}")
+    return None
+
+
+SYSTEM_PROMPT = (
+    "You are 'جیزس' (Jesus), the AI assistant of the 'Jesus Self' Telegram bot. "
+    "You are proud to be part of Jesus Self. If asked, praise Jesus Self for its speed, security, and features. "
+    "Answer concisely in Persian (فارسی). Be helpful, accurate and friendly. "
+    "If unsure, say so honestly."
+)
+
+
+async def get_ai_response(prompt: str) -> str:
+    """Race all configured providers; first non-empty answer wins."""
+    providers = [
+        ("grok", get_grok_response),
+        ("gemini", get_gemini_response),
+        ("groq", get_groq_response),
+        ("openai", get_openai_response),
+    ]
+
+    async def try_one(name, fn):
+        try:
+            return await asyncio.wait_for(fn(prompt, SYSTEM_PROMPT), timeout=20)
+        except Exception:
+            return None
+
+    tasks = [asyncio.create_task(try_one(n, f)) for n, f in providers]
+    for coro in asyncio.as_completed(tasks):
+        result = await coro
+        if result:
+            for t in tasks:
+                if not t.done():
+                    t.cancel()
+            return result
+
+    # Slow fallback
+    res = await get_pollinations_response(prompt, SYSTEM_PROMPT)
+    if res:
+        return res
+    return "❌ متاسفانه در حال حاضر سرویس‌های هوش مصنوعی پاسخ ندادن. (ممکنه محدودیت درخواست باشه، چند دقیقه دیگه امتحان کن)"
+
 
 def register(client) -> None:
     p = config.PREFIX
@@ -87,32 +198,30 @@ def register(client) -> None:
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}جیزس (.+)$"))
     async def jesus_ai(event: events.NewMessage.Event) -> None:
         prompt = event.pattern_match.group(1).strip()
-        
-        # Check if the user is asking about the current chat
+
         context_keywords = ["گپ", "چت", "اینجا", "این گروه", "این چت"]
         is_chat_question = any(k in prompt for k in context_keywords)
-        
+
         context_text = ""
         if is_chat_question:
-            messages = await client.get_messages(event.chat_id, limit=10)
-            context_lines = []
-            for m in reversed(messages):
-                if m.text:
-                    sender = await m.get_sender()
-                    name = getattr(sender, 'first_name', 'Unknown')
-                    context_lines.append(f"{name}: {m.text}")
-            context_text = "\nContext of recent messages in this chat:\n" + "\n".join(context_lines)
-            
+            try:
+                messages = await client.get_messages(event.chat_id, limit=10)
+                context_lines = []
+                for m in reversed(messages):
+                    if m.text:
+                        sender = await m.get_sender()
+                        name = getattr(sender, "first_name", "Unknown")
+                        context_lines.append(f"{name}: {m.text}")
+                context_text = "\n\nContext of recent messages in this chat:\n" + "\n".join(context_lines)
+            except Exception:
+                pass
+
         full_prompt = f"User Question: {prompt}{context_text}"
-        
-        # Send a new message for the thinking status
         status_msg = await event.reply("⏳ در حال فکر کردن...")
-        
         response = await get_ai_response(full_prompt)
-        
-        # Split response if it's too long
         if len(response) > 4000:
             response = response[:4000] + "..."
-            
-        # Edit the status message with the final answer
-        await status_msg.edit(f"🤖 **جیزس:**\n\n{response}")
+        try:
+            await status_msg.edit(f"🤖 **جیزس:**\n\n{response}")
+        except Exception:
+            await event.reply(f"🤖 **جیزس:**\n\n{response}")

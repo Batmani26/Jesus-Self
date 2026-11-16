@@ -63,26 +63,55 @@ async def osint_processor():
         log.info(f"Processing OSINT request for {req['target']} from user {req['user_id']}")
         asyncio.create_task(process_osint_request(req))
 
+WATCHDOG_TASKS = {}
+
+async def _watch_client(user_id, client):
+    """Wait for disconnect, then drop the client so manager_loop reconnects it."""
+    try:
+        await client.run_until_disconnected()
+    except asyncio.CancelledError:
+        return
+    except Exception as e:
+        log.warning(f"Client {user_id} disconnected with error: {type(e).__name__} - {e}")
+    finally:
+        # Ensure a dead client is removed so manager_loop can restart it
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+        ACTIVE_CLIENTS.pop(user_id, None)
+        WATCHDOG_TASKS.pop(user_id, None)
+        log.warning(f"Selfbot for user {user_id} dropped; will be auto-restarted by manager_loop")
+
 async def start_user_client(user_id, session_string):
     if user_id in ACTIVE_CLIENTS:
-        return
+        client = ACTIVE_CLIENTS[user_id]
+        if client.is_connected():
+            return
+        # Exists but disconnected -> force reconnect
+        await stop_user_client(user_id)
     try:
         client = build_client(session_string)
         await client.start()
         load_plugins(client)
         ACTIVE_CLIENTS[user_id] = client
         log.info(f"Started selfbot for user {user_id}")
-        asyncio.create_task(client.run_until_disconnected())
+        WATCHDOG_TASKS[user_id] = asyncio.create_task(_watch_client(user_id, client))
     except Exception as e:
         log.error(f"Failed to start selfbot for user {user_id}: {e}")
-        if user_id in ACTIVE_CLIENTS:
-            del ACTIVE_CLIENTS[user_id]
+        ACTIVE_CLIENTS.pop(user_id, None)
 
 async def stop_user_client(user_id):
     if user_id in ACTIVE_CLIENTS:
-        client = ACTIVE_CLIENTS[user_id]
-        await client.disconnect()
-        del ACTIVE_CLIENTS[user_id]
+        client = ACTIVE_CLIENTS.pop(user_id, None)
+        task = WATCHDOG_TASKS.pop(user_id, None)
+        if task and not task.done():
+            task.cancel()
+        try:
+            if client:
+                await client.disconnect()
+        except Exception:
+            pass
         log.info(f"Stopped selfbot for user {user_id}")
 
 async def manager_loop():
@@ -105,12 +134,16 @@ async def manager_loop():
             active_ids = {u['user_id'] for u in users}
             active_ids.add(ADMIN_ID)
             
-            # 3. Start missing user clients
+            # 3. Start missing OR disconnected user clients
             for u in users:
-                if u['user_id'] not in ACTIVE_CLIENTS and u['user_id'] != ADMIN_ID:
-                    decrypted_session = await get_decrypted_session(u['user_id'])
+                uid = u['user_id']
+                if uid == ADMIN_ID:
+                    continue
+                existing = ACTIVE_CLIENTS.get(uid)
+                if existing is None or not existing.is_connected():
+                    decrypted_session = await get_decrypted_session(uid)
                     if decrypted_session:
-                        await start_user_client(u['user_id'], decrypted_session)
+                        await start_user_client(uid, decrypted_session)
                         
             # 4. Stop inactive clients
             for user_id in list(ACTIVE_CLIENTS.keys()):
@@ -171,7 +204,9 @@ async def manager_loop():
                 except Exception:
                     pass
                     
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             log.error(f"Manager loop error: {type(e).__name__} - {e}", exc_info=True)
             
-        await asyncio.sleep(2) # Check every 2 seconds
+        await asyncio.sleep(5) # Check every 5 seconds to reduce DB load

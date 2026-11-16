@@ -27,5 +27,23 @@ class Config:
     # Where saved media goes
     DOWNLOAD_DIR = Path(os.getenv("DOWNLOAD_DIR", "downloads"))
 
+    # Optional proxy for Telegram (needed in Iran). Format:
+    #   socks5://user:pass@host:port  or  http://host:port  or  MTProxy
+    TG_PROXY = os.getenv("TG_PROXY", "").strip() or None
+
+    def proxy_tuple(self):
+        """Return (scheme, host, port, rdns, username, password) for Telethon, or None."""
+        p = self.TG_PROXY
+        if not p:
+            return None
+        try:
+            from urllib.parse import urlparse
+            u = urlparse(p)
+            if not u.hostname or not u.port:
+                return None
+            return (u.scheme, u.hostname, u.port, True, u.username, u.password)
+        except Exception:
+            return None
+
 
 config = Config()

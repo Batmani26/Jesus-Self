@@ -1,8 +1,13 @@
 from telethon.sync import TelegramClient
 from telethon.sessions import StringSession
 
-api_id = 2040
-api_hash = 'b18441a1ff607e10a989891a5462e627'
+import os
+from dotenv import load_dotenv
+load_dotenv()
+api_id = int(os.getenv("API_ID", "0"))
+api_hash = os.getenv("API_HASH", "")
+if not api_id or not api_hash:
+    raise SystemExit("API_ID / API_HASH missing in .env")
 
 print("Starting login process...")
 with TelegramClient(StringSession(), api_id, api_hash) as client:

@@ -3,6 +3,12 @@ import os
 import asyncio
 from cryptography.fernet import Fernet
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Generate a key (in production, keep this in .env)
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 if not ENCRYPTION_KEY:
@@ -15,11 +21,16 @@ if not DB_URL:
     raise RuntimeError("DATABASE_URL is not set in environment variables.")
 
 pool = None
+_init_lock = asyncio.Lock()
 
 async def init_db():
     global pool
-    if pool is None:
-        pool = await asyncpg.create_pool(DB_URL, min_size=1, max_size=10, statement_cache_size=0)
+    if pool is not None:
+        return
+    async with _init_lock:
+        if pool is not None:
+            return
+        pool = await asyncpg.create_pool(DB_URL, min_size=2, max_size=20, statement_cache_size=0, command_timeout=15)
         async with pool.acquire() as conn:
             await conn.execute('''
                 CREATE TABLE IF NOT EXISTS users (

@@ -8,3 +8,4 @@ asyncpg==0.29.0
 cryptography==42.0.5
 persiantools==6.2.0
 pytz==2024.1
+aiohttp-socks==0.9.1

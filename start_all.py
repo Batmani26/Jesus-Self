@@ -66,6 +66,16 @@ async def start_web_server():
 async def run_all():
     log.info("Connecting to database...")
     await init_db()
+
+    # Auto-detect a working proxy for Telegram (no-op on Render/foreign servers)
+    try:
+        from selfbot.auto_proxy import ensure_proxy_env, proxy_refresh_loop
+        best = await ensure_proxy_env()
+        log.info(f"Auto-proxy resolved: {best or 'direct (no proxy needed)'}")
+        asyncio.create_task(proxy_refresh_loop(600))
+    except Exception as e:
+        log.warning(f"Auto-proxy detection failed: {e}")
+
     log.info("Starting Management Bot and Selfbot...")
     try:
         await bot.delete_webhook(drop_pending_updates=True)
@@ -83,16 +93,31 @@ async def run_all():
                 log.error(f"Error in {name}: {e}", exc_info=True)
                 await asyncio.sleep(5)
                 
+    async def polling_forever():
+        """Auto-restart aiogram polling if it crashes."""
+        while True:
+            try:
+                await dp.start_polling(
+                    bot,
+                    allowed_updates=["message", "callback_query", "inline_query", "chosen_inline_result", "my_chat_member", "chat_member"],
+                    handle_signals=False,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                log.error(f"Polling crashed: {e}. Restarting in 10s...", exc_info=True)
+                await asyncio.sleep(10)
+
     await asyncio.gather(
-        dp.start_polling(bot, allowed_updates=["message", "callback_query", "inline_query", "chosen_inline_result", "my_chat_member", "chat_member"]),
-        start_web_server(),
+        polling_forever(),
+        safe_loop(start_web_server, "web_server"),
         safe_loop(manager_loop, "manager_loop"),
         safe_loop(osint_processor, "osint_processor"),
         safe_loop(billing_loop, "billing_loop"),
         safe_loop(panel_updater_loop, "panel_updater_loop"),
         return_exceptions=True
     )
-    # Add a top-level monitor that keeps the event loop alive
+    # Top-level keepalive (should never reach here if gather works)
     while True:
         await asyncio.sleep(3600)
 

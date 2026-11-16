@@ -1,6 +1,11 @@
 """ربات مدیریت (Management Bot) - Jesus Self"""
 import asyncio
 import logging
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, Message, ForceReply, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
@@ -20,7 +25,17 @@ if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN is not set in environment variables.")
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=BOT_TOKEN)
+
+# Build aiogram session with optional proxy (needed in Iran)
+from aiogram.client.session.aiohttp import AiohttpSession as _AioSession
+from aiogram.client.telegram import TelegramAPIServer as _TAS
+_tg_proxy = _os.getenv("TG_PROXY", "").strip() or None
+if _tg_proxy:
+    _ai_session = _AioSession(proxy=_tg_proxy, timeout=60)
+    bot = Bot(token=BOT_TOKEN, session=_ai_session)
+    logging.info(f"Management bot using proxy: {_tg_proxy}")
+else:
+    bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # آیدی عددی ادمین (خودت) رو اینجا بذار تا پیام لاگین رو برات بفرسته
@@ -505,7 +520,8 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "ابزار مورد نظر خود را انتخاب کنید:"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🧠 هوش مصنوعی", callback_data="tool_ai_info"), InlineKeyboardButton(text="💵 لیست قیمت", callback_data="tool_price_info")],
+            [InlineKeyboardButton(text="🧠 هوش مصنوعی (جیزس)", callback_data="tool_ai_info"), InlineKeyboardButton(text="⚡ Grok", callback_data="tool_grok_info")],
+            [InlineKeyboardButton(text="💵 لیست قیمت", callback_data="tool_price_info"), InlineKeyboardButton(text="🌐 ترجمه", callback_data="tool_translate_info")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
@@ -539,15 +555,72 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
 
+    if data_str == "tool_grok_info":
+        info_text = (
+            "⚡ <b>Grok (xAI) — هوش مصنوعی پیشرفته</b>\n\n"
+            "<blockquote>Grok جدیدترین مدل هوش مصنوعی از شرکت xAI (ایلان ماسک) است. مدل Grok 2 با سرعت بالا و دانش لحظه‌ای، جایگزین اول در دستور <code>.جیزس</code> شده است.</blockquote>\n\n"
+            "<b>نحوه استفاده:</b>\n"
+            "<code>.جیزس [سوال شما]</code>\n\n"
+            "<b>مثال:</b>\n"
+            "<code>.جیزس آخرین اخبار هوش مصنوعی چیست؟</code>\n\n"
+            "<b>ترتیب اولویت مدل‌ها:</b>\n"
+            "1️⃣ <b>Grok 2</b> (سریع‌ترین)\n"
+            "2️⃣ <b>Gemini 2.0 Flash</b>\n"
+            "3️⃣ <b>Llama 3.3 70B</b> (Groq)\n"
+            "4️⃣ <b>GPT-4o-mini</b>\n"
+            "5️⃣ Pollinations (رایگان)\n\n"
+            "⚠️ برای فعال‌سازی Grok، کلید <code>XAI_API_KEY</code> باید در <code>.env</code> تنظیم شده باشد.\n"
+            "👇 برای کپی، روی دستور کلیک کنید."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "tool_translate_info":
+        info_text = (
+            "🌐 <b>ترجمه با هوش مصنوعی</b>\n\n"
+            "<blockquote>هر متنی را به هر زبانی ترجمه کنید.</blockquote>\n\n"
+            "<b>دستور:</b>\n"
+            "<code>.جیزس [متن] را به [زبان] ترجمه کن</code>\n\n"
+            "<b>مثال:</b>\n"
+            "<code>.جیزس Hello World را به فارسی ترجمه کن</code>\n\n"
+            "👇 برای کپی، روی دستور کلیک کنید."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
     if data_str == "tool_ai_info":
         info_text = (
             "🧠 <b>هوش مصنوعی Jesus (جیزس)</b>\n\n"
-            "<blockquote>با استفاده از این قابلیت، می‌توانید با هوش مصنوعی پیشرفته (Llama 3 / Gemini) چت کنید، سوالات علمی، برنامه‌نویسی، ترجمه و... بپرسید.</blockquote>\n\n"
+            "<blockquote>جیزس با موتور چند-مدلی (Grok 2 + Gemini 2.0 Flash + Llama 3.3 70B + GPT-4o-mini) کار می‌کند. سریع‌ترین پاسخ برنده است!</blockquote>\n\n"
             "<b>دستور استفاده:</b>\n"
             "<code>.جیزس [سوال شما]</code>\n\n"
             "<b>مثال‌ها:</b>\n"
             "<code>.جیزس یک شعر درباره دریا بگو</code>\n"
             "<code>.جیزس کد پایتون برای جمع دو عدد بنویس</code>\n\n"
+            "<b>ویژگی‌ها:</b>\n"
+            "✅ پاسخ موازی از ۴ مدل (سریع‌ترین)\n"
+            "✅ آگاهی از ۱۰ پیام آخر چت\n"
+            "✅ اتصال پایدار (connection pooling)\n\n"
             "👇 برای کپی، روی هر دستور کلیک کنید."
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[

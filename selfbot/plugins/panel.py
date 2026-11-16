@@ -42,7 +42,11 @@ def register(client) -> None:
             elif data == "cat_games":
                 await event.answer("🎮 بخش بازی‌ها (به‌زودی)", alert=True)
             elif data == "cat_tools":
-                await event.answer("🛠 بخش ابزارها (به‌زودی)", alert=True)
+                await event.answer("🛠 ابزارها: .جیزس [سوال] برای هوش مصنوعی (Grok+Gemini)", alert=True)
+            elif data == "tool_ai_info":
+                await event.answer("🧠 برای چت با AI از دستور .جیزس استفاده کن", alert=True)
+            elif data == "tool_grok_info":
+                await event.answer("⚡ Grok 2 فعال است — اولویت اول پاسخ‌دهی", alert=True)
             elif data == "cat_fun":
                 await event.answer("👁 بخش نظارت و سرگرمی (به‌زودی)", alert=True)
             elif data == "cat_cheat":
