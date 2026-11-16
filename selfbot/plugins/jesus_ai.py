@@ -175,6 +175,123 @@ def _needs_web(text: str) -> bool:
     return any(k in low for k in _WEB_KEYWORDS)
 
 
+_IMG_KEYWORDS = ("عکس", "تصویر", "پیکچر", "photo", "image", "picture", "pic")
+
+def _needs_image(text: str) -> bool:
+    low = text.lower()
+    return any(k in low for k in _IMG_KEYWORDS)
+
+
+def _img_ok(u: str) -> bool:
+    ul = u.lower().split("?", 1)[0].split("#", 1)[0]  # strip query/fragment
+    bad = ("logo", "icon", "outline", "flag", ".svg", "placeholder", "question")
+    if any(b in ul for b in bad):
+        return False
+    return ul.endswith((".jpg", ".jpeg", ".png", ".webp"))
+
+
+async def _wiki_media(title: str, limit: int, lang: str = "en") -> list[dict]:
+    """Best real photos via Wikipedia media-list API (open license, no key)."""
+    from urllib.parse import quote as _q
+    results = []
+    url = (f"https://{lang}.wikipedia.org/api/rest_v1/page/media-list/" + _q(title.replace(" ", "_")))
+    raw = await _fetch(url, None)
+    if not raw:
+        return results
+    try:
+        import json as _json
+        d = _json.loads(raw)
+        for it in d.get("items", []):
+            if it.get("type") != "image":
+                continue
+            srcset = it.get("srcset") or []
+            if not srcset:
+                continue
+            src = srcset[-1].get("src") or srcset[0].get("src") or ""
+            if src.startswith("//"):
+                src = "https:" + src
+            if _img_ok(src):
+                results.append({"url": src, "title": it.get("title", title) or title})
+            if len(results) >= limit:
+                break
+    except Exception as e:
+        print(f"[AI-img] wiki media error: {e}")
+    return results
+
+
+async def _image_search(query: str, limit: int = 6) -> list[dict]:
+    """Fetch real open-source photos: Wikipedia media-list + Commons, with retries."""
+    # Strip Persian filler to get a cleaner title
+    clean = query
+    for w in ("عکس", "تصویر", "پیکچر", "رو بده", "بده", "از", "رو", "please", "photo", "image"):
+        clean = clean.replace(w, " ")
+    clean = " ".join(clean.split()).strip() or query
+
+    # Detect Persian to pick the right Wikipedia
+    is_fa = any("\u0600" <= ch <= "\u06FF" for ch in clean)
+    langs = ["fa", "en"] if is_fa else ["en", "fa"]
+
+    results = []
+    # 1) Wikipedia page media (best quality/relevance)
+    for lang in langs:
+        for title in (clean, query):
+            try:
+                got = await _wiki_media(title, limit, lang)
+            except Exception:
+                got = []
+            if got:
+                results.extend(got)
+                break
+            await asyncio.sleep(0.8)  # avoid 429
+        if results:
+            break
+
+    # 2) Wikipedia search -> first hit page media
+    if not results:
+        try:
+            from urllib.parse import quote as _q
+            import json as _json
+            for lang in langs:
+                sapi = (f"https://{lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch="
+                        + _q(clean) + "&format=json&srlimit=1")
+                raw = await _fetch(sapi, None)
+                if raw:
+                    hits = _json.loads(raw).get("query", {}).get("search", [])
+                    if hits:
+                        results = await _wiki_media(hits[0]["title"], limit, lang)
+                        if results:
+                            break
+                await asyncio.sleep(0.8)
+        except Exception as e:
+            print(f"[AI-img] wiki search error: {e}")
+
+    # Dedupe
+    seen = set()
+    out = []
+    for r in results:
+        if r["url"] in seen:
+            continue
+        seen.add(r["url"])
+        out.append(r)
+    return out[:limit]
+
+
+async def _download_bytes(url: str) -> bytes | None:
+    s = await _get_session()
+    proxy = getattr(s, "_magnum_proxy", None)
+    for p in ([proxy, None] if proxy else [None]):
+        try:
+            async with s.get(url, proxy=p, timeout=aiohttp.ClientTimeout(total=20),
+                             headers={"User-Agent": "Mozilla/5.0"}) as r:
+                if r.status == 200:
+                    data = await r.read()
+                    if data and len(data) > 2048:
+                        return data
+        except Exception:
+            continue
+    return None
+
+
 async def _fetch(url: str, proxy) -> str | None:
     s = await _get_session()
     for p in ([proxy, None] if proxy else [None]):
@@ -289,6 +406,31 @@ def register(client) -> None:
                 context_text = "\n\nContext of recent messages in this chat:\n" + "\n".join(context_lines)
             except Exception:
                 pass
+
+        # Image request branch
+        if _needs_image(prompt):
+            status = await event.reply("🖼 در حال جستجوی تصاویر...")
+            imgs = await _image_search(prompt, limit=6)
+            sent = 0
+            for it in imgs:
+                data = await _download_bytes(it["url"])
+                if not data:
+                    continue
+                try:
+                    await client.send_file(event.chat_id, file=data, caption=(it.get("title") or "")[:200])
+                    sent += 1
+                except Exception as e:
+                    print(f"[AI-img] send fail: {e}")
+                if sent >= 3:
+                    break
+            try:
+                if sent == 0:
+                    await status.edit("❌ تصویری پیدا نشد. دوباره تلاش کن.")
+                else:
+                    await status.edit(f"✅ {sent} تصویر ارسال شد. 🤖 Jesus")
+            except Exception:
+                pass
+            return
 
         web_text = ""
         if _needs_web(prompt):
