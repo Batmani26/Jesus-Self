@@ -63,6 +63,16 @@ async def start_web_server():
     await site.start()
     log.info("Web server started on port 8080")
 
+async def start_web_server_guarded():
+    """Bind the web server exactly once; never retry binding to avoid EADDRINUSE."""
+    try:
+        await start_web_server()
+    except OSError as e:
+        log.warning(f"Web server bind skipped: {e}")
+    # Keep this task alive (port stays bound by the running site)
+    while True:
+        await asyncio.sleep(3600)
+
 async def run_all():
     log.info("Connecting to database...")
     await init_db()
@@ -110,7 +120,7 @@ async def run_all():
 
     await asyncio.gather(
         polling_forever(),
-        safe_loop(start_web_server, "web_server"),
+        start_web_server_guarded(),
         safe_loop(manager_loop, "manager_loop"),
         safe_loop(osint_processor, "osint_processor"),
         safe_loop(billing_loop, "billing_loop"),
