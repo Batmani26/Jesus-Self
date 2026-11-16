@@ -224,11 +224,15 @@ async def _wiki_media(title: str, limit: int, lang: str = "en") -> list[dict]:
 
 async def _image_search(query: str, limit: int = 6) -> list[dict]:
     """Fetch real open-source photos: Wikipedia media-list + Commons, with retries."""
-    # Strip Persian filler to get a cleaner title
+    # Strip Persian/English filler to get a cleaner title
     clean = query
-    for w in ("عکس", "تصویر", "پیکچر", "رو بده", "بده", "از", "رو", "please", "photo", "image"):
+    for w in ("عکس‌های", "عکسهای", "عکس", "تصاویر", "تصویر", "پیکچر", "رو بده", "بده", "نشان بده",
+              "از", "رو", "please", "photo", "image", "picture", "pic", "show", "me"):
         clean = clean.replace(w, " ")
     clean = " ".join(clean.split()).strip() or query
+    # Fix trailing conjunction like 'میلادو' -> 'میلاد'
+    if clean.endswith("و") and len(clean) > 2:
+        clean = clean[:-1].strip()
 
     # Detect Persian to pick the right Wikipedia
     is_fa = any("\u0600" <= ch <= "\u06FF" for ch in clean)
@@ -295,17 +299,25 @@ async def _download_bytes(url: str) -> bytes | None:
     return None
 
 
-async def _fetch(url: str, proxy) -> str | None:
+async def _fetch(url: str, proxy, retries: int = 3) -> str | None:
     s = await _get_session()
-    for p in ([proxy, None] if proxy else [None]):
-        try:
-            async with s.get(url, proxy=p, timeout=aiohttp.ClientTimeout(total=12),
-                             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}) as r:
-                if r.status == 200:
-                    return await r.text(errors="ignore")
-        except Exception as e:
-            print(f"[AI-web] fetch {'proxy' if p else 'direct'} fail {url[:40]}: {type(e).__name__}")
-            continue
+    for attempt in range(retries):
+        for p in ([proxy, None] if proxy else [None]):
+            try:
+                async with s.get(url, proxy=p, timeout=aiohttp.ClientTimeout(total=12),
+                                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}) as r:
+                    if r.status == 200:
+                        return await r.text(errors="ignore")
+                    if r.status == 429:
+                        await asyncio.sleep(2 + attempt * 2)
+                        continue
+                    if r.status >= 500:
+                        await asyncio.sleep(1)
+                        continue
+            except Exception as e:
+                print(f"[AI-web] fetch {'proxy' if p else 'direct'} fail {url[:40]}: {type(e).__name__}")
+                continue
+        await asyncio.sleep(1)
     return None
 
 
