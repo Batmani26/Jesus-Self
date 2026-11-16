@@ -157,8 +157,82 @@ SYSTEM_PROMPT = (
     "You are 'جیزس' (Jesus), the AI assistant of the 'Jesus Self' Telegram bot. "
     "You are proud to be part of Jesus Self. If asked, praise Jesus Self for its speed, security, and features. "
     "Answer concisely in Persian (فارسی). Be helpful, accurate and friendly. "
-    "If unsure, say so honestly."
+    "If unsure, say so honestly. "
+    "When web search results are provided, use them as the source of truth and cite them briefly."
 )
+
+
+# ---------- Web search / live info ----------
+_WEB_KEYWORDS = (
+    "قیمت", "چنده", "چند است", "نرخ", "دلار", "یورو", "طلا", "سکه", "بیتکوین", "بیت کوین",
+    "اخبار", "خبر", "امروز", "آخرین", "جدیدترین", "آب و هوا", "هوا", "نتیجه", "بازی",
+    "price", "rate", "news", "weather", "today", "latest", "score", "usd", "eur",
+)
+
+
+def _needs_web(text: str) -> bool:
+    low = text.lower()
+    return any(k in low for k in _WEB_KEYWORDS)
+
+
+async def _fetch(url: str, proxy) -> str | None:
+    s = await _get_session()
+    for p in ([proxy, None] if proxy else [None]):
+        try:
+            async with s.get(url, proxy=p, timeout=aiohttp.ClientTimeout(total=12),
+                             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}) as r:
+                if r.status == 200:
+                    return await r.text(errors="ignore")
+        except Exception as e:
+            print(f"[AI-web] fetch {'proxy' if p else 'direct'} fail {url[:40]}: {type(e).__name__}")
+            continue
+    return None
+
+
+async def _web_search(query: str) -> str:
+    """Return a compact text digest of web results (DDG HTML + currency API)."""
+    s = await _get_session()
+    proxy = getattr(s, "_magnum_proxy", None)
+    parts = []
+
+    # 1) Live currency (free, no key) for price queries
+    ql = query.lower()
+    if any(w in ql for w in ("دلار", "یورو", "usd", "eur", "درهم", "لیر", "price", "نرخ")):
+        try:
+            from urllib.parse import quote as _q
+            fr = await _fetch("https://api.frankfurter.app/latest?from=USD&to=EUR,GBP,TRY,AED", proxy)
+            if fr:
+                import json as _json
+                d = _json.loads(fr).get("rates", {})
+                if d:
+                    parts.append("نرخ ارز (Frankfurter, base USD): " + ", ".join(f"{k}={v}" for k, v in d.items()))
+        except Exception:
+            pass
+
+    # 2) DuckDuckGo HTML results
+    try:
+        from urllib.parse import quote as _q
+        import re as _re
+        html = await _fetch("https://html.duckduckgo.com/html/?q=" + _q(query), proxy)
+        if html:
+            # extract result titles + snippets
+            snippets = _re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', html, _re.S)
+            titles = _re.findall(r'class="result__a"[^>]*>(.*?)</a>', html, _re.S)
+            def _clean(x):
+                x = _re.sub(r'<[^>]+>', '', x)
+                return _re.sub(r'\s+', ' ', x).strip()
+            lines = []
+            for i in range(min(5, len(snippets))):
+                t = _clean(titles[i]) if i < len(titles) else ""
+                sn = _clean(snippets[i])
+                if sn:
+                    lines.append(f"- {t}: {sn}" if t else f"- {sn}")
+            if lines:
+                parts.append("نتایج جستجوی وب:\n" + "\n".join(lines))
+    except Exception as e:
+        print(f"[AI-web] ddg error: {e}")
+
+    return "\n\n".join(parts)[:2500]
 
 
 async def get_ai_response(prompt: str) -> str:
@@ -216,8 +290,15 @@ def register(client) -> None:
             except Exception:
                 pass
 
+        web_text = ""
+        if _needs_web(prompt):
+            web_text = await _web_search(prompt)
+
         full_prompt = f"User Question: {prompt}{context_text}"
-        status_msg = await event.reply("⏳ در حال فکر کردن...")
+        if web_text:
+            full_prompt += f"\n\n[نتایج زنده از وب — از این‌ها به‌عنوان منبع استفاده کن]:\n{web_text}"
+
+        status_msg = await event.reply("⏳ در حال فکر کردن..." if not web_text else "🌐 در حال جستجو در وب...")
         response = await get_ai_response(full_prompt)
         if len(response) > 4000:
             response = response[:4000] + "..."
