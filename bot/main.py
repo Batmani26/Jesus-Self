@@ -51,6 +51,11 @@ ACTIVE_PANELS = {} # {(chat_id, message_id): user_id}
 # Feature toggles (shared with selfbot plugins)
 CALC_ENABLED = {"on": True}
 TRANS_ENABLED = {"on": True}
+GUARDIAN = {
+    "deleted": True,
+    "selfdestruct": True,
+    "edited": True,
+}
 
 MAIN_KEYBOARD = ReplyKeyboardMarkup(
     keyboard=[
@@ -533,6 +538,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🧠 هوش مصنوعی (جیزس)", callback_data="tool_ai_info")],
             [InlineKeyboardButton(text="🧮 ماشین حساب", callback_data="tool_calc_info"), InlineKeyboardButton(text="🌐 ترجمه", callback_data="tool_translate_info")],
+            [InlineKeyboardButton(text="🛡 نگهبان چت", callback_data="tool_guardian_info")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
@@ -732,6 +738,51 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
+
+    if data_str in ("tool_guardian_info", "tog_g_deleted", "tog_g_selfdestruct", "tog_g_edited"):
+        if data_str == "tog_g_deleted":
+            GUARDIAN["deleted"] = not GUARDIAN.get("deleted", True)
+        elif data_str == "tog_g_selfdestruct":
+            GUARDIAN["selfdestruct"] = not GUARDIAN.get("selfdestruct", True)
+        elif data_str == "tog_g_edited":
+            GUARDIAN["edited"] = not GUARDIAN.get("edited", True)
+        def _st(v):
+            return "🟢 روشن" if v else "🔴 خاموش"
+        def _lbl(v):
+            return "🔴 خاموش کن" if v else "🟢 روشن کن"
+        d, s, e = GUARDIAN.get("deleted", True), GUARDIAN.get("selfdestruct", True), GUARDIAN.get("edited", True)
+        info_text = (
+            "🛡 <b>نگهبان چت (Chat Guardian)</b>\n\n"
+            "<blockquote>از پیام‌هایت محافظت می‌کند: پیام‌های حذف‌شده، رسانه‌های نابودشونده و پیام‌های ویرایش‌شده را در «پیام‌های ذخیره‌شده» نگه می‌دارد.</blockquote>\n\n"
+            "━━━━━━━━━━━━━━\n"
+            "🗑 <b>سیو پیام حذف شده</b>\n"
+            f"وضعیت: {_st(d)}\n"
+            "<blockquote>اگر کسی در پیوی تو پیامی بفرستد و بعد حذفش کند، سلف آن را فوراً در Saved Messages فوروارد می‌کند.</blockquote>\n\n"
+            "💥 <b>سیو مدیای نابود شونده</b>\n"
+            f"وضعیت: {_st(s)}\n"
+            "<blockquote>عکس/ویدیوی نابودشونده (self-destruct) که برایت می‌فرستند، بلافاصله ذخیره و به Saved Messages ارسال می‌شود.</blockquote>\n\n"
+            "✏️ <b>سیو پیام ویرایش شده</b>\n"
+            f"وضعیت: {_st(e)}\n"
+            "<blockquote>اگر پیامی ویرایش شود، نسخه قبلی و متن جدید در Saved Messages ذخیره می‌شود.</blockquote>\n\n"
+            "━━━━━━━━━━━━━━\n"
+            "👇 برای روشن/خاموش کردن هر بخش روی دکمه‌اش بزن:"
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=f"🗑 سیو پیام حذف شده — {_lbl(d)}", callback_data="tog_g_deleted")],
+            [InlineKeyboardButton(text=f"💥 سیو مدیای نابود شونده — {_lbl(s)}", callback_data="tog_g_selfdestruct")],
+            [InlineKeyboardButton(text=f"✏️ سیو پیام ویرایش شده — {_lbl(e)}", callback_data="tog_g_edited")],
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer("✅ ذخیره شد" if data_str != "tool_guardian_info" else None)
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
     elif cat == "fun":
         await callback.answer("👁 بخش نظارت و سرگرمی (به‌زودی)", show_alert=True)
     elif cat == "cheat":
