@@ -637,7 +637,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "<code>.جیزس هوا تهران فردا چطوره</code>\n\n"
             "🌐 <b>مترجم چندزبانه</b>\n"
             "<code>.جیزس این متن رو به انگلیسی ترجمه کن</code>\n"
-            "<code>.جیزس "Hello" رو به ژاپنی بگو</code>\n\n"
+            "<code>.جیزس Hello رو به ژاپنی بگو</code>\n\n"
             "🖼 <b>شکارچی عکس (از اینترنت)</b>\n"
             "۳ عکس واقعی و باکیفیت پیدا می‌کنه و می‌فرسته!\n"
             "<code>.جیزس عکس برج میلاد</code>\n"
