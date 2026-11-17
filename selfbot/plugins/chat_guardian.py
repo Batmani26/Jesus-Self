@@ -30,9 +30,20 @@ def _toggle(key: str) -> bool:
 
 def _fmt_dt(dt) -> str:
     try:
-        return dt.strftime("%Y/%m/%d %H:%M")
+        import pytz
+        tz = pytz.timezone("Asia/Tehran")
+        if dt.tzinfo is None:
+            # Telethon dates are UTC-aware normally; if naive assume UTC
+            import datetime as _dtmod
+            dt = dt.replace(tzinfo=_dtmod.timezone.utc)
+        local = dt.astimezone(tz)
+        return local.strftime("%Y/%m/%d %H:%M")
     except Exception:
-        return datetime.now().strftime("%Y/%m/%d %H:%M")
+        try:
+            import pytz
+            return datetime.now(pytz.timezone("Asia/Tehran")).strftime("%Y/%m/%d %H:%M")
+        except Exception:
+            return datetime.now().strftime("%Y/%m/%d %H:%M")
 
 
 def _cache_put(chat_id, msg_id, data):
