@@ -41,18 +41,17 @@ def register(client) -> None:
 
     @client.on(events.NewMessage(outgoing=True))
     async def auto_calc(event: events.NewMessage.Event) -> None:
+        # cheap early exits first (avoid heavy work on every message)
+        txt = (event.raw_text or "").strip()
+        if not txt or len(txt) > 60 or txt.startswith(p):
+            return
+        if not _HAS_OP.search(txt) or not _EXPR_RE.match(txt):
+            return
         try:
             from bot.main import CALC_ENABLED
         except Exception:
             CALC_ENABLED = {"on": True}
         if not CALC_ENABLED.get("on", True):
-            return
-        txt = (event.raw_text or "").strip()
-        if not txt or len(txt) > 60:
-            return
-        if txt.startswith(p):  # ignore commands
-            return
-        if not _HAS_OP.search(txt) or not _EXPR_RE.match(txt):
             return
         # must contain at least one digit and one operator
         if not re.search(r"\d", txt):
