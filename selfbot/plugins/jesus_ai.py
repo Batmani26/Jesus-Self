@@ -308,7 +308,9 @@ async def _fetch(url: str, proxy, retries: int = 1, timeout: float = 6.0) -> str
     for p in ([proxy, None] if proxy else [None]):
         try:
             async with s.get(url, proxy=p, timeout=aiohttp.ClientTimeout(total=timeout),
-                             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}) as r:
+                             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                                      "Cache-Control": "no-cache, no-store, must-revalidate",
+                                      "Pragma": "no-cache"}) as r:
                 if r.status == 200:
                     return await r.text(errors="ignore")
         except Exception:
