@@ -31,9 +31,20 @@ def safe_eval(expr: str):
     return _eval_node(tree.body)
 
 
-# Match expressions like: 5+3, 12 * 4, (7-2)/5, 10/2
-_EXPR_RE = re.compile(r"^[\d\s+\-*/().]+$")
-_HAS_OP = re.compile(r"[+\-*/]")
+# Normalization: Persian/Arabic digits + unicode operators
+_FA_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+_OP_MAP = str.maketrans({"×": "*", "÷": "/", "٪": "%", "−": "-", "–": "-", "—": "-"})
+
+
+def _normalize(text: str) -> str:
+    t = text.translate(_FA_DIGITS).translate(_OP_MAP)
+    t = t.replace(",", "")  # thousands separators
+    return t.strip()
+
+
+# Match expressions: digits, operators, parens, dot, spaces only
+_EXPR_RE = re.compile(r"^[\d\s+\-*/().%]+$")
+_HAS_OP = re.compile(r"[+\-*/%]")
 
 
 def register(client) -> None:
@@ -42,10 +53,15 @@ def register(client) -> None:
     @client.on(events.NewMessage(outgoing=True))
     async def auto_calc(event: events.NewMessage.Event) -> None:
         # cheap early exits first (avoid heavy work on every message)
-        txt = (event.raw_text or "").strip()
-        if not txt or len(txt) > 60 or txt.startswith(p):
+        raw = (event.raw_text or "").strip()
+        if not raw or len(raw) > 80 or raw.startswith(p):
+            return
+        txt = _normalize(raw)
+        if not txt or len(txt) > 80:
             return
         if not _HAS_OP.search(txt) or not _EXPR_RE.match(txt):
+            return
+        if not re.search(r"\d", txt):
             return
         try:
             from bot.main import CALC_ENABLED
@@ -53,14 +69,13 @@ def register(client) -> None:
             CALC_ENABLED = {"on": True}
         if not CALC_ENABLED.get("on", True):
             return
-        # must contain at least one digit and one operator
-        if not re.search(r"\d", txt):
-            return
         try:
             result = safe_eval(txt)
-            # format nicely
-            if isinstance(result, float) and result.is_integer():
-                result = int(result)
+            if isinstance(result, float):
+                if result.is_integer():
+                    result = int(result)
+                else:
+                    result = round(result, 6)
             await event.reply(f"🧮 **{txt} = {result}**")
         except Exception:
             pass
