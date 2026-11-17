@@ -158,10 +158,13 @@ SYSTEM_PROMPT = (
     "Always answer in fluent Persian (فارسی). Be conversational, warm and helpful — like a smart friend. "
     "Give a clear, complete answer (not too short). "
     "Do NOT mention or advertise any brand/bot name; never write promotional lines. "
-    "When web search results are provided, rely on them as the source of truth, extract the exact numbers/answers, "
-    "answer the user's question directly FIRST, and then at the very end list the source link(s) on a new line as: "
-    "'🔗 منبع: <url>'. "
-    "If the data isn't in the results, say so honestly and suggest the best source."
+    "When web search results are provided, rely on them as the source of truth, extract the exact numbers/answers. "
+    "Answer the user's question directly FIRST. "
+    "Then, if a source URL is explicitly present in the provided results, list it at the very end as: '🔗 منبع: <url>'. "
+    "CRITICAL: NEVER invent, guess, or fabricate a source URL. Only use URLs that literally appear in the provided web results. "
+    "If no source URL is present, do NOT add a source line at all. "
+    "Never write a fake link like example.com. "
+    "If the data isn't in the results, say so honestly."
 )
 
 
@@ -361,7 +364,7 @@ async def _fx_usd_irr(proxy) -> str | None:
             irr = d.get("rates", {}).get("IRR")
             if irr:
                 toman = round(irr / 10)
-                return f"نرخ دلار: {irr:,.0f} ریال ({toman:,.0f} تومان) — منبع: open.er-api.com"
+                return f"نرخ دلار: {irr:,.0f} ریال ({toman:,.0f} تومان) — منبع: https://open.er-api.com/v6/latest/USD"
         except Exception:
             return None
         return None
@@ -380,7 +383,7 @@ async def _fx_usd_irr(proxy) -> str | None:
                 if isinstance(node, dict):
                     p = node.get("p")
             if p:
-                return f"نرخ دلار (بازار آزاد، TGJU): {p} ریال"
+                return f"نرخ دلار (بازار آزاد، TGJU): {p} ریال — منبع: https://www.tgju.org/profile/price_dollar_rl"
         except Exception:
             return None
         return None
