@@ -92,6 +92,15 @@ def register(client) -> None:
     async def _on_edited(event: events.MessageEdited.Event) -> None:
         if not _toggle("edited"):
             return
+        # Only private chats from real users (not bots, not groups/channels)
+        if not event.is_private:
+            return
+        try:
+            sender = await event.get_sender()
+            if getattr(sender, "bot", False):
+                return
+        except Exception:
+            pass
         msg = event.message
         cached = _MSG_CACHE.get((event.chat_id, msg.id))
         old_text = cached["text"] if cached else "(نامشخص)"
@@ -121,8 +130,19 @@ def register(client) -> None:
     async def _on_deleted(event: events.MessageDeleted.Event) -> None:
         if not _toggle("deleted"):
             return
-        for msg_id in event.deleted_ids:
+        ids = list(event.deleted_ids or [])
+        if not ids and getattr(event, "deleted_id", None):
+            ids = [event.deleted_id]
+        log.info(f"[guardian] deleted event chat={event.chat_id} ids={ids} cache_size={len(_MSG_CACHE)}")
+        for msg_id in ids:
+            # Try exact key first
             cached = _MSG_CACHE.pop((event.chat_id, msg_id), None)
+            if not cached:
+                # Fallback: scan cache for this msg_id in any chat (handles chat_id mismatch)
+                for k in list(_MSG_CACHE.keys()):
+                    if k[1] == msg_id:
+                        cached = _MSG_CACHE.pop(k, None)
+                        break
             if not cached:
                 continue
             text = cached["text"] or ""
