@@ -138,12 +138,18 @@ async def get_pollinations_response(prompt: str, system: str = "") -> str | None
     """Free fallback (no API key needed). Try better models first."""
     s = await _get_session()
     full = f"{system}\n\nUser: {prompt}" if system else prompt
+    # Keep prompt compact for GET-based endpoint (avoid overly long URLs)
+    if len(full) > 2500:
+        full = full[:2500]
     from urllib.parse import quote as _q
     proxy = getattr(s, "_magnum_proxy", None)
-    for model in ("openai-large", "openai", "mistral"):
+    for model in ("openai", ""):
         try:
+            url = "https://text.pollinations.ai/" + _q(full, safe="")
+            if model:
+                url += f"?model={model}"
             async with s.get(
-                "https://text.pollinations.ai/" + _q(full, safe="") + f"?model={model}",
+                url,
                 timeout=aiohttp.ClientTimeout(total=25),
                 proxy=proxy,
             ) as resp:
@@ -444,14 +450,40 @@ async def _fx_usd_irr(proxy) -> str | None:
     return None
 
 
+async def _weather(query: str, proxy) -> str | None:
+    """Free weather via wttr.in (no key)."""
+    import re as _re
+    q = query
+    for w in ("هوا", "آب و هوا", "امروز", "فردا", "چطوره", "چطور است", "خوبه یا بده", "weather", "today", "how is"):
+        q = q.replace(w, " ")
+    q = " ".join(q.split()).strip() or "Tehran"
+    try:
+        from urllib.parse import quote as _q
+        raw = await _fetch(f"https://wttr.in/{_q(q)}?format=j1", proxy, timeout=8)
+        if raw:
+            import json as _json
+            d = _json.loads(raw)
+            cur = d.get("current_condition", [{}])[0]
+            desc = cur.get("weatherDesc", [{}])[0].get("value", "")
+            temp = cur.get("temp_C", "?")
+            feels = cur.get("FeelsLikeC", "?")
+            hum = cur.get("humidity", "?")
+            return f"آب‌وهوای {q}: {desc}، دما {temp}°C (احساس {feels}°C)، رطوبت {hum}% — منبع: wttr.in"
+    except Exception as e:
+        print(f"[AI-web] weather error: {e}")
+    return None
+
+
 async def _web_search(query: str) -> str:
-    """Fast parallel web digest: FX + DDG snippets, hard-capped to ~6s."""
+    """Fast parallel web digest: FX + weather + DDG snippets, hard-capped to ~8s."""
     s = await _get_session()
     proxy = getattr(s, "_magnum_proxy", None)
     ql = query.lower()
     jobs = []
     if any(w in ql for w in ("دلار", "ریال", "تومان", "usd", "irr", "price", "نرخ", "یورو", "eur")):
         jobs.append(asyncio.create_task(_fx_usd_irr(proxy)))
+    if any(w in ql for w in ("هوا", "آب و هوا", "weather", "دما", "باران", "برف")):
+        jobs.append(asyncio.create_task(_weather(query, proxy)))
     jobs.append(asyncio.create_task(_ddg_snippets(query, proxy)))
 
     parts = []
@@ -550,6 +582,20 @@ def register(client) -> None:
                     await status.edit(f"✅ {sent} تصویر ارسال شد. 🤖 Jesus")
             except Exception:
                 pass
+            return
+
+        # Fast local date answer (no AI needed)
+        _date_kw = ("امروز چندمه", "تاریخ امروز", "چندم ماهه", "today's date", "امروز چه تاریخیه")
+        if any(k in prompt for k in _date_kw) and "هوا" not in prompt:
+            import datetime, pytz
+            try:
+                from persiantools.jdatetime import JalaliDate
+                now = datetime.datetime.now(pytz.timezone("Asia/Tehran"))
+                jdate = JalaliDate(now).strftime("%Y/%m/%d")
+                await event.reply(f"📅 **امروز:**\nشمسی: `{jdate}`\nمیلادی: `{now.strftime('%Y/%m/%d')}`\n⏰ ساعت: `{now.strftime('%H:%M')}`")
+            except Exception:
+                now = datetime.datetime.now()
+                await event.reply(f"📅 امروز: `{now.strftime('%Y/%m/%d')}`")
             return
 
         web_text = ""
