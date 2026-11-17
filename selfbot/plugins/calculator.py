@@ -76,6 +76,7 @@ def register(client) -> None:
                     result = int(result)
                 else:
                     result = round(result, 6)
-            await event.reply(f"🧮 **{txt} = {result}**")
+            # Edit the user's OWN message: append ' = result' (no new message)
+            await event.edit(f"{raw} = {result}")
         except Exception:
             pass
