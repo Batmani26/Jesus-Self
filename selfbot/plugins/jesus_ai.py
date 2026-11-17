@@ -370,7 +370,11 @@ async def _fx_usd_irr(proxy) -> str | None:
         return None
 
     async def _tgju():
-        raw = await _fetch("https://call1.tgju.org/ajax.json", proxy, timeout=5)
+        raw = None
+        for host in ("call1.tgju.org", "call2.tgju.org", "call3.tgju.org", "call.tgju.org"):
+            raw = await _fetch(f"https://{host}/ajax.json", proxy, timeout=10)
+            if raw:
+                break
         if not raw:
             return None
         try:
@@ -416,7 +420,7 @@ async def _fx_usd_irr(proxy) -> str | None:
     tgju_task = asyncio.create_task(_tgju())
     erapi_task = asyncio.create_task(_erapi())
     try:
-        r = await asyncio.wait_for(tgju_task, timeout=5.0)
+        r = await asyncio.wait_for(tgju_task, timeout=12.0)
     except Exception:
         r = None
     if r:
