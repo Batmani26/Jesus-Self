@@ -148,7 +148,14 @@ async def panel_updater_loop():
                     f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
                     "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
                 )
-                await bot.edit_message_text(chat_id=chat_id, message_id=msg_id, text=text)
+                # NOTE: must re-send inline buttons, otherwise edit strips them
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
+                    [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
+                    [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
+                    [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
+                ])
+                await bot.edit_message_text(chat_id=chat_id, message_id=msg_id, text=text, reply_markup=kb, parse_mode="Markdown")
             except Exception as e:
                 if "message is not modified" not in str(e).lower():
                     del ACTIVE_PANELS[(chat_id, msg_id)]
@@ -167,7 +174,7 @@ async def refresh_inline_panel(callback: CallbackQuery):
     now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
     time_str = now_tehran.strftime("%H:%M:%S")
     date_miladi = now_tehran.strftime("%Y/%m/%d")
-    date_shamsi = JalaliDateTime(now_tehran.year, now_tehran.month, now_tehran.day).strftime("%Y/%m/%d")
+    date_shamsi = JalaliDate(now_tehran).strftime("%Y/%m/%d")
     
     text = (
         "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
@@ -803,7 +810,7 @@ async def cb_back_to_panel(callback: CallbackQuery):
     now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
     time_str = now_tehran.strftime("%H:%M:%S")
     date_miladi = now_tehran.strftime("%Y/%m/%d")
-    date_shamsi = JalaliDateTime(now_tehran.year, now_tehran.month, now_tehran.day).strftime("%Y/%m/%d")
+    date_shamsi = JalaliDate(now_tehran).strftime("%Y/%m/%d")
     
     text = (
         "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
