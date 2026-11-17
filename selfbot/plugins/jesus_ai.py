@@ -377,13 +377,36 @@ async def _fx_usd_irr(proxy) -> str | None:
             import json as _json
             d = _json.loads(raw)
             cur = d.get("current", {})
-            p = None
-            for k in ("price_dollar_rl",):
-                node = cur.get(k, {})
+            def _num(k):
+                node = cur.get(k)
                 if isinstance(node, dict):
-                    p = node.get("p")
+                    return node.get("p")
+                return None
+            p = _num("price_dollar_rl")
             if p:
-                return f"نرخ دلار (بازار آزاد، TGJU): {p} ریال — منبع: https://www.tgju.org/profile/price_dollar_rl"
+                # p is in Rial, e.g. '2,679,000' -> toman = /10
+                try:
+                    rial = float(str(p).replace(",", ""))
+                    toman = rial / 10
+                    line = (
+                        f"نرخ دلار بازار آزاد (TGJU): {int(rial):,} ریال "
+                        f"= {int(toman):,} تومان"
+                    )
+                except Exception:
+                    line = f"نرخ دلار بازار آزاد (TGJU): {p} ریال"
+                extras = []
+                for k, label, div in (("price_eur", "یورو", 10), ("price_gbp", "پوند", 10),
+                                       ("price_aed", "درهم", 10), ("price_try", "لیر", 10)):
+                    v = _num(k)
+                    if v:
+                        try:
+                            extras.append(f"{label}: {int(float(str(v).replace(',',''))/div):,} تومان")
+                        except Exception:
+                            pass
+                if extras:
+                    line += " | " + "، ".join(extras)
+                line += " — منبع: https://www.tgju.org/profile/price_dollar_rl"
+                return line
         except Exception:
             return None
         return None
