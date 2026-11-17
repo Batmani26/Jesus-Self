@@ -135,35 +135,40 @@ async def get_openai_response(prompt: str, system: str = "") -> str | None:
 
 
 async def get_pollinations_response(prompt: str, system: str = "") -> str | None:
-    """Free fallback (no API key needed)."""
-    try:
-        s = await _get_session()
-        full = f"{system}\n\nUser: {prompt}" if system else prompt
-        from urllib.parse import quote as _q
-        proxy = getattr(s, "_magnum_proxy", None)
-        async with s.get(
-            "https://text.pollinations.ai/" + _q(full, safe="") + "?model=openai",
-            timeout=aiohttp.ClientTimeout(total=30),
-            proxy=proxy,
-        ) as resp:
-            if resp.status == 200:
-                return await resp.text()
-    except Exception as e:
-        print(f"[AI] pollinations error: {e}")
+    """Free fallback (no API key needed). Try better models first."""
+    s = await _get_session()
+    full = f"{system}\n\nUser: {prompt}" if system else prompt
+    from urllib.parse import quote as _q
+    proxy = getattr(s, "_magnum_proxy", None)
+    for model in ("openai-large", "openai", "mistral"):
+        try:
+            async with s.get(
+                "https://text.pollinations.ai/" + _q(full, safe="") + f"?model={model}",
+                timeout=aiohttp.ClientTimeout(total=25),
+                proxy=proxy,
+            ) as resp:
+                if resp.status == 200:
+                    txt = await resp.text()
+                    if txt and len(txt.strip()) > 5:
+                        return txt
+        except Exception as e:
+            print(f"[AI] pollinations {model} error: {type(e).__name__}")
+            continue
     return None
 
 
 SYSTEM_PROMPT = (
-    "You are 'جیزس' (Jesus), a warm, friendly and knowledgeable AI assistant in a Telegram bot. "
-    "Always answer in fluent Persian (فارسی). Be conversational, warm and helpful — like a smart friend. "
-    "Give a clear, complete answer (not too short). "
+    "You are 'جیزس' (Jesus), a sharp, witty and warm Persian AI assistant in a Telegram bot. "
+    "Always answer in fluent, natural Persian (فارسی) — never broken or machine-translated Persian. "
+    "Be conversational and friendly, like a smart funny friend. "
+    "Give clear, complete, HIGH-QUALITY answers. For creative tasks (jokes, poems, stories) be genuinely clever and funny — "
+    "make sense, punchlines land, avoid nonsense or random word salad. "
     "Do NOT mention or advertise any brand/bot name; never write promotional lines. "
     "When web search results are provided, rely on them as the source of truth, extract the exact numbers/answers. "
     "Answer the user's question directly FIRST. "
     "Then, if a source URL is explicitly present in the provided results, list it at the very end as: '🔗 منبع: <url>'. "
     "CRITICAL: NEVER invent, guess, or fabricate a source URL. Only use URLs that literally appear in the provided web results. "
     "If no source URL is present, do NOT add a source line at all. "
-    "Never write a fake link like example.com. "
     "If the data isn't in the results, say so honestly."
 )
 
