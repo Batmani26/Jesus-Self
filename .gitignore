@@ -27,3 +27,17 @@ bot/users.db
 vscode_setup.exe
 *.exe
 *.zip
+
+# Dev/test scratch files
+test_configs.py
+_bot_test.py
+_gem_test.py
+_gem_models.py
+_ai_test.py
+_img_test*.py
+_web_test.py
+_fx_test.py
+_tgju_*.py
+_bonbast_test.py
+_inspect*.py
+_inspect_out.txt
