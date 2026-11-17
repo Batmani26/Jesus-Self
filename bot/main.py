@@ -48,6 +48,10 @@ CLIENTS = {}
 TEMP_CODES = {}
 ACTIVE_PANELS = {} # {(chat_id, message_id): user_id}
 
+# Feature toggles (shared with selfbot plugins)
+CALC_ENABLED = {"on": True}
+TRANS_ENABLED = {"on": True}
+
 MAIN_KEYBOARD = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="✨ ساخت سلف"), KeyboardButton(text="👤 حساب کاربری")],
@@ -202,7 +206,7 @@ async def refresh_inline_panel(callback: CallbackQuery):
         else:
             await callback.answer(f"❌ خطا در بروزرسانی: {e}", show_alert=True)
 
-@dp.callback_query(F.data.startswith("cat_"))
+@dp.callback_query(F.data.startswith("cat_") | F.data.startswith("tool_") | F.data.startswith("tog_") | (F.data == "back_to_panel"))
 async def process_inline_panel_callback(callback: CallbackQuery):
     data_str = callback.data
     if data_str == "cat_casino_info":
@@ -527,8 +531,8 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "ابزار مورد نظر خود را انتخاب کنید:"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🧠 هوش مصنوعی (جیزس)", callback_data="tool_ai_info"), InlineKeyboardButton(text="⚡ Grok", callback_data="tool_grok_info")],
-            [InlineKeyboardButton(text="💵 لیست قیمت", callback_data="tool_price_info"), InlineKeyboardButton(text="🌐 ترجمه", callback_data="tool_translate_info")],
+            [InlineKeyboardButton(text="🧠 هوش مصنوعی (جیزس)", callback_data="tool_ai_info")],
+            [InlineKeyboardButton(text="🧮 ماشین حساب", callback_data="tool_calc_info"), InlineKeyboardButton(text="🌐 ترجمه", callback_data="tool_translate_info")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
@@ -541,15 +545,21 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
 
-    if data_str == "tool_price_info":
+    if data_str == "tool_calc_info":
+        st = "🟢 روشن" if CALC_ENABLED.get("on", True) else "🔴 خاموش"
         info_text = (
-            "💵 <b>قابلیت لیست قیمت لحظه‌ای</b>\n\n"
-            "<blockquote>با استفاده از این قابلیت، می‌توانید قیمت لحظه‌ای دلار، یورو، طلا و سکه را دریافت کنید.</blockquote>\n\n"
-            "<b>دستور استفاده:</b>\n"
-            "<code>.قیمت ارز</code>\n\n"
-            "👇 برای کپی، روی دستور کلیک کنید."
+            "🧮 <b>ماشین حساب خودکار</b>\n\n"
+            f"وضعیت: <b>{st}</b>\n\n"
+            "<blockquote>وقتی روشن باشد، هر پیامی که شامل عملگر + - * / باشد، به‌طور خودکار حل و جواب داده می‌شود.</blockquote>\n\n"
+            "<b>مثال‌ها:</b>\n"
+            "<code>5+3</code> → 8\n"
+            "<code>12 * 4</code> → 48\n"
+            "<code>(7-2)/5</code> → 1\n\n"
+            "👇 دکمه پایین برای روشن/خاموش کردن:"
         )
+        btn = "🔴 خاموش کن" if CALC_ENABLED.get("on", True) else "🟢 روشن کن"
         kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=btn, callback_data="tog_calc")],
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
         ])
         try:
@@ -562,24 +572,23 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
 
-    if data_str == "tool_grok_info":
+    if data_str == "tog_calc":
+        CALC_ENABLED["on"] = not CALC_ENABLED.get("on", True)
+        await process_inline_panel_callback(callback) if False else None
+        st = "🟢 روشن" if CALC_ENABLED["on"] else "🔴 خاموش"
+        btn = "🔴 خاموش کن" if CALC_ENABLED["on"] else "🟢 روشن کن"
         info_text = (
-            "⚡ <b>Grok (xAI) — هوش مصنوعی پیشرفته</b>\n\n"
-            "<blockquote>Grok جدیدترین مدل هوش مصنوعی از شرکت xAI (ایلان ماسک) است. مدل Grok 2 با سرعت بالا و دانش لحظه‌ای، جایگزین اول در دستور <code>.جیزس</code> شده است.</blockquote>\n\n"
-            "<b>نحوه استفاده:</b>\n"
-            "<code>.جیزس [سوال شما]</code>\n\n"
-            "<b>مثال:</b>\n"
-            "<code>.جیزس آخرین اخبار هوش مصنوعی چیست؟</code>\n\n"
-            "<b>ترتیب اولویت مدل‌ها:</b>\n"
-            "1️⃣ <b>Grok 2</b> (سریع‌ترین)\n"
-            "2️⃣ <b>Gemini 2.0 Flash</b>\n"
-            "3️⃣ <b>Llama 3.3 70B</b> (Groq)\n"
-            "4️⃣ <b>GPT-4o-mini</b>\n"
-            "5️⃣ Pollinations (رایگان)\n\n"
-            "⚠️ برای فعال‌سازی Grok، کلید <code>XAI_API_KEY</code> باید در <code>.env</code> تنظیم شده باشد.\n"
-            "👇 برای کپی، روی دستور کلیک کنید."
+            "🧮 <b>ماشین حساب خودکار</b>\n\n"
+            f"وضعیت: <b>{st}</b>\n\n"
+            "<blockquote>وقتی روشن باشد، هر پیامی که شامل عملگر + - * / باشد، به‌طور خودکار حل و جواب داده می‌شود.</blockquote>\n\n"
+            "<b>مثال‌ها:</b>\n"
+            "<code>5+3</code> → 8\n"
+            "<code>12 * 4</code> → 48\n"
+            "<code>(7-2)/5</code> → 1\n\n"
+            "👇 دکمه پایین برای روشن/خاموش کردن:"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=btn, callback_data="tog_calc")],
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
         ])
         try:
@@ -587,22 +596,25 @@ async def process_inline_panel_callback(callback: CallbackQuery):
                 await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
             else:
                 await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer(f"{'✅ روشن شد' if CALC_ENABLED['on'] else '❌ خاموش شد'}")
+        except Exception:
             await callback.answer()
-        except Exception as e:
-            await callback.answer(f"خطا: {e}", show_alert=True)
         return
 
     if data_str == "tool_translate_info":
+        st = "🟢 روشن" if TRANS_ENABLED.get("on", True) else "🔴 خاموش"
         info_text = (
-            "🌐 <b>ترجمه با هوش مصنوعی</b>\n\n"
-            "<blockquote>هر متنی را به هر زبانی ترجمه کنید.</blockquote>\n\n"
+            "🌐 <b>مترجم هوشمند (تشخیص زبان)</b>\n\n"
+            f"وضعیت: <b>{st}</b>\n\n"
+            "<blockquote>متن انگلیسی یا روسی را بفرست، خودکار تشخیص می‌دهد و به فارسی ترجمه می‌کند.</blockquote>\n\n"
             "<b>دستور:</b>\n"
-            "<code>.جیزس [متن] را به [زبان] ترجمه کن</code>\n\n"
-            "<b>مثال:</b>\n"
-            "<code>.جیزس Hello World را به فارسی ترجمه کن</code>\n\n"
-            "👇 برای کپی، روی دستور کلیک کنید."
+            "<code>.ترجمه Hello World</code>\n"
+            "<code>.ترجمه Привет мир</code>\n\n"
+            "👇 دکمه پایین برای روشن/خاموش کردن:"
         )
+        btn = "🔴 خاموش کن" if TRANS_ENABLED.get("on", True) else "🟢 روشن کن"
         kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=btn, callback_data="tog_translate")],
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
         ])
         try:
@@ -613,6 +625,33 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "tog_translate":
+        TRANS_ENABLED["on"] = not TRANS_ENABLED.get("on", True)
+        st = "🟢 روشن" if TRANS_ENABLED["on"] else "🔴 خاموش"
+        btn = "🔴 خاموش کن" if TRANS_ENABLED["on"] else "🟢 روشن کن"
+        info_text = (
+            "🌐 <b>مترجم هوشمند (تشخیص زبان)</b>\n\n"
+            f"وضعیت: <b>{st}</b>\n\n"
+            "<blockquote>متن انگلیسی یا روسی را بفرست، خودکار تشخیص می‌دهد و به فارسی ترجمه می‌کند.</blockquote>\n\n"
+            "<b>دستور:</b>\n"
+            "<code>.ترجمه Hello World</code>\n"
+            "<code>.ترجمه Привет мир</code>\n\n"
+            "👇 دکمه پایین برای روشن/خاموش کردن:"
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=btn, callback_data="tog_translate")],
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer(f"{'✅ روشن شد' if TRANS_ENABLED['on'] else '❌ خاموش شد'}")
+        except Exception:
+            await callback.answer()
         return
 
     if data_str == "tool_ai_info":
