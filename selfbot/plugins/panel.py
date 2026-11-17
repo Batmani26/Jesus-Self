@@ -20,10 +20,17 @@ def register(client) -> None:
             
         try:
             results = await client.inline_query('SelfJesusBot', 'panel')
+            if not results:
+                await event.edit("❌ پنل خالی برگشت. مطمئن شو Inline Mode ربات در @BotFather فعال است.")
+                return
             await results[0].click(event.chat_id)
             await event.delete()
         except Exception as e:
-            await event.edit(f"❌ خطا در باز کردن پنل: {e}")
+            msg = str(e)
+            hint = ""
+            if "inline" in msg.lower() or "bot" in msg.lower():
+                hint = "\n\n💡 نکته: Inline Mode ربات باید در @BotFather → /setinline فعال باشد."
+            await event.edit(f"❌ خطا در باز کردن پنل: `{msg}`{hint}")
 
     @client.on(events.CallbackQuery())
     async def panel_callback(event: events.CallbackQuery.Event) -> None:

@@ -128,7 +128,7 @@ async def track_inline_panel(message: Message):
 async def panel_updater_loop():
     while True:
         try:
-            await asyncio.sleep(5)
+            await asyncio.sleep(1)
         except asyncio.CancelledError:
             break
         except Exception as e:
