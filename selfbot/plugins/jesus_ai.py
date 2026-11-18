@@ -550,7 +550,9 @@ async def get_ai_response(prompt: str) -> str:
 
 
 def register(client) -> None:
+    import re as _re
     p = config.PREFIX
+    _ep = _re.escape(p)
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}جیزس (.+)$"))
     async def jesus_ai(event: events.NewMessage.Event) -> None:
