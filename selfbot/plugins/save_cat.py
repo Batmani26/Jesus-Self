@@ -92,9 +92,11 @@ async def global_scan_loop(client):
             await asyncio.sleep(60 if "flood" in txt else 5)
 
 def register(client) -> None:
+    import re as _re
+    _ep = _re.escape(config.PREFIX)
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}نجات پیشی\s*(روشن|خاموش)$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}نجات پیشی\s*(روشن|خاموش)$"))
     async def toggle_save_cat(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
         from bot.database import set_save_cat_active
@@ -108,7 +110,7 @@ def register(client) -> None:
             await set_save_cat_active(me.id, 0)
             await event.edit("❌ **نجات پیشی خاموش شد.**")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}اعلان نجات\s*(روشن|خاموش)$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}اعلان نجات\s*(روشن|خاموش)$"))
     async def toggle_announce(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
         from bot.database import set_save_cat_announce
@@ -121,7 +123,7 @@ def register(client) -> None:
         else:
             await event.edit("❌ **اعلام نجات خاموش شد.**")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}نجات در تمامی چت ها$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}نجات در تمامی چت ها$"))
     async def scan_all_chats(event: events.NewMessage.Event) -> None:
         global GLOBAL_SCAN_TASK
         me = await client.get_me()

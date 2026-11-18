@@ -25,7 +25,9 @@ def register(client) -> None:
                 pass
         return _me_id["v"]
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{re.escape(p)}ترجمه(\s|$)"))
+    import re as _re
+    _ep = _re.escape(p)
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}ترجمه(\s|$)"))
     async def translate(event: events.NewMessage.Event) -> None:
         uid = await _own_id()
         try:

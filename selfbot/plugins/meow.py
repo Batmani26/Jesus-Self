@@ -47,9 +47,11 @@ async def meow_loop_wrapper(client, chat_id, interval_str, immediate=True):
             next_send = loop.time() + cooldown
 
 def register(client) -> None:
+    import re as _re
+    _ep = _re.escape(config.PREFIX)
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}تنظیم زمان میویی (\d+:\d+)$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}تنظیم زمان میویی (\d+:\d+)$"))
     async def set_meow_time(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
         interval = event.pattern_match.group(1).strip()
@@ -57,7 +59,7 @@ def register(client) -> None:
         await set_meow_interval(me.id, interval)
         await event.edit(f"✅ زمان میو کردن شما روی **{interval}** (دقیقه:ثانیه) تنظیم شد.")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}تنظیم میویی$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}تنظیم میویی$"))
     async def set_meow_target(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
         chat_id = event.chat_id
@@ -69,7 +71,7 @@ def register(client) -> None:
         
         await event.edit(f"✅ چت **{chat_title}** به عنوان مقصد میو کردن تنظیم شد.\n\nحالا برای شروع، دستور `.میو روشن` را بزنید.", parse_mode="md")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}میو روشن$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}میو روشن$"))
     async def start_meow(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
         from bot.database import get_meow_target_db, set_meow_active, get_meow_interval

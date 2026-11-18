@@ -713,8 +713,16 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         return
 
     if data_str == "cat_manage":
+        from bot.database import get_setting as _gs
+        _lp = await _gs(callback.from_user.id, "lock_pv", 0)
+        _so = await _gs(callback.from_user.id, "secretary_on", 0)
+        _stx = await _gs(callback.from_user.id, "secretary_text") or "تنظیم نشده"
+        _lp_s = "🟢 فعال" if _lp else "🔴 غیرفعال"
+        _so_s = "🟢 روشن" if _so else "🔴 خاموش"
         info_text = (
             "⚙️ <b>بخش مدیریت</b>\n\n"
+            f"📊 <b>وضعیت فعلی:</b> قفل پیوی: {_lp_s} | منشی: {_so_s}\n"
+            f"<blockquote>متن فعلی منشی: {_stx}</blockquote>\n\n"
             "<b>📖 آموزش دستورات:</b>\n\n"
             "🗑 <b>حذف پیام</b>\n"
             "<blockquote>روی پیام مورد نظر ریپلای کن و <code>.حذف</code> بزن؛ پیام برای هر دو طرف پاک می‌شود.\n"
@@ -755,21 +763,19 @@ async def process_inline_panel_callback(callback: CallbackQuery):
                 await callback.answer(f"خطا: {e}", show_alert=True)
         ao = await get_setting(callback.from_user.id, "always_online", 0)
         at = await get_setting(callback.from_user.id, "always_typing", 0)
-        asn = await get_setting(callback.from_user.id, "auto_seen", 0)
         def _st(v):
             return "روشن 🟢" if v else "خاموش 🔴"
         info_text = (
             "🎨 <b>شخصی‌ساز اکانت</b>\n\n"
+            f"📊 <b>وضعیت فعلی:</b> آنلاین {_st(ao)} | در حال نوشتن {_st(at)}\n\n"
             "<b>📖 آموزش:</b>\n"
             "🟢 <b>همیشه آنلاین</b>\n<blockquote>وقتی روشن باشد، اکانت شما هرگز آفلاین نمی‌شود.</blockquote>\n"
-            "✍️ <b>همیشه در حال نوشتن</b>\n<blockquote>در گروه‌ها همیشه حالت «در حال نوشتن...» نمایش داده می‌شود.</blockquote>\n"
-            "👁 <b>سین خودکار</b>\n<blockquote>پیام‌های جدید به‌صورت خودکار خوانده (Seen) می‌شوند.</blockquote>\n\n"
+            "✍️ <b>همیشه در حال نوشتن</b>\n<blockquote>در گروه‌ها همیشه حالت «در حال نوشتن...» نمایش داده می‌شود.</blockquote>\n\n"
             "👇 با دکمه‌ها وضعیت را تغییر بده:"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text=f"🟢 همیشه آنلاین: {_st(ao)}", callback_data="pers_tog:always_online")],
             [InlineKeyboardButton(text=f"✍️ همیشه در حال نوشتن: {_st(at)}", callback_data="pers_tog:always_typing")],
-            [InlineKeyboardButton(text=f"👁 سین خودکار: {_st(asn)}", callback_data="pers_tog:auto_seen")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:

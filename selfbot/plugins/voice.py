@@ -10,7 +10,9 @@ log = logging.getLogger("selfbot.voice")
 
 
 def register(client) -> None:
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{config.PREFIX}say (.+)$"))
+    import re as _re
+    _ep = _re.escape(config.PREFIX)
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}say (.+)$"))
     async def say_cmd(event: events.NewMessage.Event) -> None:
         text = event.pattern_match.group(1).strip()
         if not text:

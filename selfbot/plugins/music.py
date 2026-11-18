@@ -11,9 +11,11 @@ log = logging.getLogger("selfbot.music")
 
 
 def register(client) -> None:
+    import re as _re
+    _ep = _re.escape(config.PREFIX)
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}song (.+)$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}song (.+)$"))
     async def song_cmd(event: events.NewMessage.Event) -> None:
         query = event.pattern_match.group(1).strip()
         if not query:

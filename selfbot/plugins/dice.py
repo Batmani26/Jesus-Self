@@ -5,9 +5,11 @@ from telethon.tl.types import InputMediaDice
 from selfbot.config import config
 
 def register(client) -> None:
+    import re as _re
+    _ep = _re.escape(config.PREFIX)
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}تاس ([1-6])$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}تاس ([1-6])$"))
     async def dice_cmd(event: events.NewMessage.Event) -> None:
         desired = int(event.pattern_match.group(1))
         await event.delete()

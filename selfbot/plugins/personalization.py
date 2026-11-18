@@ -13,7 +13,9 @@ SIG = "🛡 Jesus Self | شخصی‌سازی"
 
 
 def register(client) -> None:
+    import re as _re
     p = config.PREFIX
+    _ep = _re.escape(p)
     _me = {"id": None}
 
     async def _own_id():
@@ -38,7 +40,7 @@ def register(client) -> None:
         from bot.database import toggle_setting
         return await toggle_setting(uid, col)
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{re.escape(p)}همیشه انلاین$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}همیشه انلاین$"))
     async def cmd_always_online(event: events.NewMessage.Event) -> None:
         try:
             new = await _toggle("always_online")
@@ -46,7 +48,7 @@ def register(client) -> None:
         except Exception as e:
             await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{re.escape(p)}همیشه در حال نوشتن$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}همیشه در حال نوشتن$"))
     async def cmd_always_typing(event: events.NewMessage.Event) -> None:
         try:
             new = await _toggle("always_typing")
@@ -54,13 +56,7 @@ def register(client) -> None:
         except Exception as e:
             await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{re.escape(p)}سین خودکار$"))
-    async def cmd_auto_seen(event: events.NewMessage.Event) -> None:
-        try:
-            new = await _toggle("auto_seen")
-            await event.edit(f"👁 <b>سین خودکار:</b> {'روشن' if new else 'خاموش'}\n\n{SIG}", parse_mode="html")
-        except Exception as e:
-            await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
+
 
     async def _online_loop():
         while True:
@@ -86,20 +82,5 @@ def register(client) -> None:
                 pass
             await asyncio.sleep(45)
 
-    async def _seen_loop():
-        while True:
-            try:
-                if await _get("auto_seen"):
-                    async for dialog in client.iter_dialogs(limit=20):
-                        try:
-                            await client.send_read_acknowledge(dialog.id)
-                        except Exception:
-                            pass
-                        await asyncio.sleep(0.3)
-            except Exception:
-                pass
-            await asyncio.sleep(30)
-
     asyncio.create_task(_online_loop())
     asyncio.create_task(_typing_loop())
-    asyncio.create_task(_seen_loop())

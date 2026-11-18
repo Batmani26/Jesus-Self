@@ -552,7 +552,7 @@ async def get_ai_response(prompt: str) -> str:
 def register(client) -> None:
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}جیزس (.+)$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}جیزس (.+)$"))
     async def jesus_ai(event: events.NewMessage.Event) -> None:
         prompt = event.pattern_match.group(1).strip()
 

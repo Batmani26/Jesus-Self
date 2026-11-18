@@ -57,9 +57,11 @@ async def _run_osint(admin_client, target: str) -> str | None:
 
 
 def register(client) -> None:
+    import re as _re
+    _ep = _re.escape(config.PREFIX)
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{re.escape(p)}استاک$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}استاک$"))
     async def osint_cmd(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
         USER_STATES[me.id] = "WAITING_TARGET"
@@ -74,7 +76,7 @@ def register(client) -> None:
             f"(برای انصراف `{p}انصراف` را بزنید)",
         )
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{re.escape(p)}انصراف$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}انصراف$"))
     async def cancel_cmd(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
         USER_STATES.pop(me.id, None)

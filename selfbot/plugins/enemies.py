@@ -17,7 +17,9 @@ SIGNATURE = "🛡 Jesus Self | دشمنان"
 
 
 def register(client) -> None:
+    import re as _re
     p = config.PREFIX
+    _ep = _re.escape(p)
     _me_id = {"v": None}
 
     async def _own_id():
@@ -29,7 +31,7 @@ def register(client) -> None:
                 pass
         return _me_id["v"]
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}تنظیم دشمن(?:\s+(.+))?$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}تنظیم دشمن(?:\s+(.+))?$"))
     async def set_enemy(event: events.NewMessage.Event) -> None:
         uid = await _own_id()
         if not uid:
@@ -83,7 +85,7 @@ def register(client) -> None:
         except Exception as e:
             await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}حذف دشمن(?:\s+(.+))?$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}حذف دشمن(?:\s+(.+))?$"))
     async def remove_enemy_cmd(event: events.NewMessage.Event) -> None:
         uid = await _own_id()
         if not uid:
@@ -132,7 +134,7 @@ def register(client) -> None:
         except Exception as e:
             await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پاکسازی لیست فحش$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}پاکسازی لیست فحش$"))
     async def clear_curses_cmd(event: events.NewMessage.Event) -> None:
         uid = await _own_id()
         if not uid:
@@ -144,7 +146,7 @@ def register(client) -> None:
         except Exception as e:
             await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}افزودن فحش (.+)$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}افزودن فحش (.+)$"))
     async def add_curse(event: events.NewMessage.Event) -> None:
         uid = await _own_id()
         if not uid:

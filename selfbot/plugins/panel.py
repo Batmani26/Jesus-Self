@@ -6,9 +6,11 @@ from selfbot.config import config
 from bot.database import get_yaqoot
 
 def register(client) -> None:
+    import re as _re
+    _ep = _re.escape(config.PREFIX)
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پنل"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}پنل"))
     async def panel_cmd(event: events.NewMessage.Event) -> None:
         print(f"[DEBUG] .پنل triggered by {event.sender_id}")
         me = await event.client.get_me()

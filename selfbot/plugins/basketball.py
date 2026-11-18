@@ -5,9 +5,11 @@ from telethon.tl.types import InputMediaDice
 from selfbot.config import config
 
 def register(client) -> None:
+    import re as _re
+    _ep = _re.escape(config.PREFIX)
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}بسکتبال$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}بسکتبال$"))
     async def basketball_cmd(event: events.NewMessage.Event) -> None:
         await event.delete()
         

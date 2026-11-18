@@ -23,20 +23,22 @@ HELP_TEXT = """🤖 **𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭 — Commands**
 
 
 def register(client) -> None:
+    import re as _re
+    _ep = _re.escape(config.PREFIX)
     p = config.PREFIX
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}help$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}help$"))
     async def help_cmd(event: events.NewMessage.Event) -> None:
         await event.edit(HELP_TEXT)
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}ping$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}ping$"))
     async def ping_cmd(event: events.NewMessage.Event) -> None:
         start = time.perf_counter()
         await event.edit("🏓 Pong...")
         ms = (time.perf_counter() - start) * 1000
         await event.edit(f"🏓 **Pong!** `{ms:.0f} ms`")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}info$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}info$"))
     async def info_cmd(event: events.NewMessage.Event) -> None:
         me = await event.client.get_me()
         text = (
