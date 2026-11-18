@@ -115,6 +115,48 @@ def register(client) -> None:
         except Exception as e:
             await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
 
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{ep}حذف سکوت$"))
+    async def cmd_unmute(event: events.NewMessage.Event) -> None:
+        uid = await _own_id()
+        if not event.is_reply:
+            await event.edit(f"❌ روی پیام کاربر سکوت‌شده ریپلای کن و <code>{p}حذف سکوت</code> بزن.", parse_mode="html")
+            return
+        try:
+            replied = await event.get_reply_message()
+            target = replied.sender_id
+            if not target or target == uid:
+                await event.edit("❌ کاربر نامعتبر.")
+                return
+            name = "کاربر"
+            try:
+                s = await replied.get_sender()
+                name = getattr(s, "first_name", None) or getattr(s, "title", None) or name
+            except Exception:
+                pass
+            from bot.database import remove_muted
+            await remove_muted(uid, target)
+            await event.edit(
+                f"🔊 <b>کاربر {name}</b> (<code>{target}</code>) از سکوت خارج شد.\n\n"
+                f"<blockquote>از این به بعد پیام‌هایش حذف نمی‌شوند.</blockquote>\n\n{SIG}",
+                parse_mode="html",
+            )
+        except Exception as e:
+            await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
+
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{ep}بازکردن قفل پیوی$"))
+    async def cmd_unlock_pv(event: events.NewMessage.Event) -> None:
+        uid = await _own_id()
+        from bot.database import set_setting
+        try:
+            await set_setting(uid, "lock_pv", 0)
+            await event.edit(
+                f"🔓 <b>قفل پیوی:</b> 🔴 غیرفعال (باز شد)\n\n"
+                f"<blockquote>از این به بعد پیام‌های ورودی در پیوی حذف نمی‌شوند.</blockquote>\n\n{SIG}",
+                parse_mode="html",
+            )
+        except Exception as e:
+            await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
+
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^{ep}قفل پیوی$"))
     async def cmd_lock_pv(event: events.NewMessage.Event) -> None:
         uid = await _own_id()
