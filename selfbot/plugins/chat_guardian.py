@@ -165,18 +165,25 @@ def register(client) -> None:
         ids = list(event.deleted_ids or [])
         if not ids and getattr(event, "deleted_id", None):
             ids = [event.deleted_id]
+        # event.chat_id can be None for private-chat deletions; try to recover it from cache
         try:
-            if int(event.chat_id) < 0:
-                return
+            cid = int(event.chat_id) if event.chat_id is not None else None
         except Exception:
+            cid = None
+        if cid is not None and cid < 0:
             return
         for msg_id in ids:
-            cached = _MSG_CACHE.pop((event.chat_id, msg_id), None)
+            cached = None
+            if cid is not None:
+                cached = _MSG_CACHE.pop((cid, msg_id), None)
             if not cached:
+                # Fallback: match by message_id only; cached entries are already private-only
                 for k in list(_MSG_CACHE.keys()):
-                    if k[1] == msg_id and int(k[0]) == int(event.chat_id):
+                    if k[1] == msg_id:
                         cached = _MSG_CACHE.pop(k, None)
                         break
+            if not cached:
+                continue
             if not cached:
                 continue
             flags = await _flags()

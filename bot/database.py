@@ -61,6 +61,23 @@ async def init_db():
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS g_deleted INTEGER DEFAULT 1')
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS g_selfdestruct INTEGER DEFAULT 1')
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS g_edited INTEGER DEFAULT 1')
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS enemies (
+                    user_id BIGINT NOT NULL,
+                    enemy_id BIGINT NOT NULL,
+                    enemy_name TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, enemy_id)
+                )
+            ''')
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS curses (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    text TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
 
 async def add_user(user_id, username, first_name):
     await init_db()
@@ -314,6 +331,47 @@ async def deduct_yaqoot(user_id, amount):
     await init_db()
     async with pool.acquire() as conn:
         await conn.execute('UPDATE users SET yaqoot_balance = yaqoot_balance - $1, last_deduction = CURRENT_TIMESTAMP WHERE user_id = $2', amount, user_id)
+
+async def add_enemy(user_id, enemy_id, enemy_name):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('''
+            INSERT INTO enemies (user_id, enemy_id, enemy_name) VALUES ($1, $2, $3)
+            ON CONFLICT (user_id, enemy_id) DO UPDATE SET enemy_name = $3
+        ''', user_id, enemy_id, enemy_name)
+
+async def remove_enemy(user_id, enemy_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('DELETE FROM enemies WHERE user_id = $1 AND enemy_id = $2', user_id, enemy_id)
+
+async def get_enemies(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        return await conn.fetch('SELECT enemy_id, enemy_name FROM enemies WHERE user_id = $1 ORDER BY created_at DESC', user_id)
+
+async def is_enemy(user_id, enemy_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow('SELECT 1 FROM enemies WHERE user_id = $1 AND enemy_id = $2', user_id, enemy_id)
+        return row is not None
+
+async def add_curse(user_id, text):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO curses (user_id, text) VALUES ($1, $2)', user_id, text)
+
+async def get_curses(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch('SELECT text FROM curses WHERE user_id = $1', user_id)
+        return [r['text'] for r in rows]
+
+async def remove_curse(user_id, text):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('DELETE FROM curses WHERE user_id = $1 AND text = $2', user_id, text)
+
 
 async def deactivate_user(user_id):
     await init_db()

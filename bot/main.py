@@ -539,6 +539,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🧠 هوش مصنوعی (جیزس)", callback_data="tool_ai_info")],
             [InlineKeyboardButton(text="🧮 ماشین حساب", callback_data="tool_calc_info"), InlineKeyboardButton(text="🌐 ترجمه", callback_data="tool_translate_info")],
             [InlineKeyboardButton(text="🛡 نگهبان چت", callback_data="tool_guardian_info")],
+            [InlineKeyboardButton(text="☠️ دشمنان", callback_data="tool_enemies_info")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
@@ -579,6 +580,52 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             else:
                 await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
             await callback.answer(("✅ روشن شد" if on else "❌ خاموش شد") if data_str == "tog_calc" else None)
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "tool_enemies_info" or data_str.startswith("enemy_del:"):
+        from bot.database import get_enemies, remove_enemy
+        if data_str.startswith("enemy_del:"):
+            try:
+                eid = int(data_str.split(":", 1)[1])
+                await remove_enemy(callback.from_user.id, eid)
+                await callback.answer("✅ دشمن از لیست حذف شد")
+            except Exception as exc:
+                await callback.answer(f"خطا: {exc}", show_alert=True)
+        try:
+            enemies = await get_enemies(callback.from_user.id)
+        except Exception:
+            enemies = []
+        lines = [
+            "☠️ <b>بخش دشمنان</b>",
+            "",
+            "<blockquote>هر شخصی که به لیست دشمنان شما اضافه شود، سلف‌بات با دیدن هر پیام او در پیوی یا گروه، یک فحش از لیست فحش‌های شما به او می‌دهد.</blockquote>",
+            "",
+            "<b>📖 آموزش:</b>",
+            "1️⃣ روی پیام شخص مورد نظر ریپلای کنید و بزنید: <code>.تنظیم دشمن</code>",
+            "2️⃣ فحش‌های دلخواه خود را اضافه کنید: <code>.افزودن فحش [متن]</code>",
+            "3️⃣ بقیه‌اش خودکار است — هر پیامی از دشمن بفرستد، فحش می‌گیرد.",
+            "",
+        ]
+        if enemies:
+            lines.append(f"<b>👥 لیست دشمنان شما ({len(enemies)}):</b>")
+        else:
+            lines.append("<b>👥 لیست دشمنان شما:</b> هنوز خالی است.")
+        kb_rows = []
+        for e in enemies[:30]:
+            nm = e["enemy_name"] or "نامشخص"
+            kb_rows.append([InlineKeyboardButton(text=f"🗑 {nm} ({e['enemy_id']})", callback_data=f"enemy_del:{e['enemy_id']}")])
+        kb_rows.append([InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="tool_enemies_info")])
+        kb_rows.append([InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")])
+        kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
+        info_text = "\n".join(lines)
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
