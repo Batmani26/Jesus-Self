@@ -1154,6 +1154,53 @@ async def cmd_apology(message: Message):
     await status.edit_text(f"✅ ارسال شد: {sent}{NL}❌ ناموفق: {failed}")
 
 
+@dp.message(Command("broadcast"))
+async def cmd_broadcast(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⛔ شما دسترسی به این دستور را ندارید.")
+        return
+
+    # Text after /broadcast (or use replied message text/media)
+    parts = (message.text or "").split(maxsplit=1)
+    payload = parts[1].strip() if len(parts) > 1 else ""
+    replied = message.reply_to_message
+    if not payload and replied and (replied.text or replied.caption):
+        payload = (replied.text or replied.caption or "").strip()
+    if not payload and not (replied and (replied.photo or replied.video or replied.document)):
+        await message.answer(
+            "⚠️ فرمت صحیح:\n"
+            "`/broadcast [متن پیام]`\n"
+            "یا روی یک پیام (متن/عکس/ویدیو/فایل) ریپلای کن و `/broadcast` بزن.",
+            parse_mode="Markdown",
+        )
+        return
+
+    status = await message.answer("⏳ در حال ارسال به همه کاربران...")
+    users = await get_all_active_users()
+    ids = {u["user_id"] for u in users}
+    if ADMIN_ID:
+        ids.add(ADMIN_ID)
+
+    sent = 0
+    failed = 0
+    for uid in ids:
+        try:
+            if replied and (replied.photo or replied.video or replied.document):
+                await bot.copy_message(chat_id=uid, from_chat_id=replied.chat.id, message_id=replied.message_id)
+            else:
+                await bot.send_message(uid, payload, parse_mode="Markdown")
+            sent += 1
+        except Exception:
+            failed += 1
+        await asyncio.sleep(0.05)
+
+    await status.edit_text(
+        f"✅ **ارسال نسخهٔ جدید به پایان رسید**\n\n"
+        f"📬 موفق: `{sent}`\n❌ ناموفق: `{failed}`\n👥 کل: `{len(ids)}`",
+        parse_mode="Markdown",
+    )
+
+
 @dp.message(Command("charge"))
 async def cmd_charge(message: Message):
     if message.from_user.id != ADMIN_ID:
