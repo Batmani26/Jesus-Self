@@ -37,10 +37,20 @@ def _find_button(markup, keywords):
     return None
 
 
+def _all_buttons(markup):
+    out = []
+    if not markup:
+        return out
+    for row in markup.rows:
+        for button in row.buttons:
+            out.append(getattr(button, "text", "") or "")
+    return out
+
+
 async def _find_bot_reply(client, chat_id, sent_msg_id):
     """Find the message that replies to our 'ماهی' message."""
     try:
-        messages = await client.get_messages(chat_id, limit=12)
+        messages = await client.get_messages(chat_id, limit=8)
     except Exception as exc:
         print(f"[FISH] fetch error: {exc}")
         return None
@@ -63,28 +73,46 @@ async def _find_bot_reply(client, chat_id, sent_msg_id):
 async def handle_catch(client, chat_id, sent_msg_id, modes, timeout=40):
     waited = 0.0
     while waited < timeout:
-        await asyncio.sleep(1.5)
-        waited += 1.5
+        await asyncio.sleep(0.7)
+        waited += 0.7
 
         bot_msg = await _find_bot_reply(client, chat_id, sent_msg_id)
         if not bot_msg:
             continue
 
         text = getattr(bot_msg, "text", "") or ""
-        if "فرار کرد" in text:
+        rarity = detect_rarity(text)
+        markup = getattr(bot_msg, "reply_markup", None)
+
+        # If the message still has action buttons, act FAST — even if a later line says 'فرار کرد'
+        # (meowie appends 'فرار کرد' only AFTER timeout, but if we click quickly we win)
+        if rarity and markup:
+            pass  # proceed to click immediately
+        elif "فرار کرد" in text and not markup:
             print(f"[FISH] escaped: {text.splitlines()[0] if text else ''}")
             return {"rarity": None, "mode": None, "action": "escaped"}
-
-        rarity = detect_rarity(text)
-        if not rarity:
+        elif not rarity:
             continue
 
         mode = (modes or {}).get(rarity, "sell")
         keywords = MODE_KEYWORDS.get(mode, MODE_KEYWORDS["sell"])
 
         clicked = False
+        print(f"[FISH] buttons available: {_all_buttons(getattr(bot_msg, 'reply_markup', None))}")
         for attempt in range(3):
             button = _find_button(getattr(bot_msg, "reply_markup", None), keywords)
+            if not button:
+                # fallback: try any button whose label is not 'بستن' / 'close'
+                mk = getattr(bot_msg, "reply_markup", None)
+                if mk:
+                    for row in mk.rows:
+                        for b in row.buttons:
+                            lbl = getattr(b, "text", "") or ""
+                            if lbl and "بستن" not in lbl and "close" not in lbl.lower():
+                                button = b
+                                break
+                        if button:
+                            break
             if not button:
                 break
             try:
