@@ -211,7 +211,7 @@ async def refresh_inline_panel(callback: CallbackQuery):
         else:
             await callback.answer(f"❌ خطا در بروزرسانی: {e}", show_alert=True)
 
-@dp.callback_query(F.data.startswith("cat_") | F.data.startswith("tool_") | F.data.startswith("tog_") | (F.data == "back_to_panel"))
+@dp.callback_query(F.data.startswith("cat_") | F.data.startswith("tool_") | F.data.startswith("tog_") | F.data.startswith("enemy_del:") | (F.data == "back_to_panel"))
 async def process_inline_panel_callback(callback: CallbackQuery):
     data_str = callback.data
     if data_str == "cat_casino_info":
@@ -603,9 +603,10 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "<blockquote>هر شخصی که به لیست دشمنان شما اضافه شود، سلف‌بات با دیدن هر پیام او در پیوی یا گروه، یک فحش از لیست فحش‌های شما به او می‌دهد.</blockquote>",
             "",
             "<b>📖 آموزش:</b>",
-            "1️⃣ روی پیام شخص مورد نظر ریپلای کنید و بزنید: <code>.تنظیم دشمن</code>",
+            "1️⃣ روی پیام شخص ریپلای کنید و بزنید: <code>.تنظیم دشمن</code>",
+            "💡 یا بدون ریپلای، یوزرنیم/آیدی عددی بدهید: <code>.تنظیم دشمن @username</code> (شخص متوجه نمی‌شود)",
             "2️⃣ فحش‌های دلخواه خود را اضافه کنید: <code>.افزودن فحش [متن]</code>",
-            "3️⃣ بقیه‌اش خودکار است — هر پیامی از دشمن بفرستد، فحش می‌گیرد.",
+            "3️⃣ باقی‌اش را به ما بسپارید.",
             "",
         ]
         if enemies:
@@ -613,12 +614,40 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         else:
             lines.append("<b>👥 لیست دشمنان شما:</b> هنوز خالی است.")
         kb_rows = []
+        # Curse-list button ALWAYS at the very top
+        kb_rows.append([InlineKeyboardButton(text="📜 فحش‌های من", callback_data="curse_list")])
         for e in enemies[:30]:
             nm = e["enemy_name"] or "نامشخص"
             kb_rows.append([InlineKeyboardButton(text=f"🗑 {nm} ({e['enemy_id']})", callback_data=f"enemy_del:{e['enemy_id']}")])
         kb_rows.append([InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="tool_enemies_info")])
         kb_rows.append([InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")])
         kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
+        info_text = "\n".join(lines)
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "curse_list":
+        from bot.database import get_curses
+        try:
+            curses = await get_curses(callback.from_user.id)
+        except Exception:
+            curses = []
+        if curses:
+            lines = ["📜 <b>لیست فحش‌های شما:</b>", ""]
+            for i, c in enumerate(curses[:50], 1):
+                lines.append(f"{i}. <blockquote>{c}</blockquote>")
+        else:
+            lines = ["📜 <b>لیست فحش‌های شما خالی است.</b>", "", "با دستور <code>.افزودن فحش [متن]</code> اضافه کنید."]
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="tool_enemies_info")]
+        ])
         info_text = "\n".join(lines)
         try:
             if callback.message:

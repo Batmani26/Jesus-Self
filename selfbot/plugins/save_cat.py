@@ -28,20 +28,26 @@ async def _try_rescue(client, chat_id, msg):
         return
     _INFLIGHT.add(key)
     try:
-        for attempt in range(3):
+        for attempt in range(4):
             try:
                 current = await client.get_messages(chat_id, ids=msg.id)
             except Exception as exc:
                 print(f"[SAVE CAT] fetch error: {exc}")
-                await asyncio.sleep(0.2)
+                await asyncio.sleep(0.3)
                 continue
             if not current or not getattr(current, "reply_markup", None):
-                break
+                await asyncio.sleep(0.5)
+                continue
             target = None
             for row in current.reply_markup.rows:
                 for button in row.buttons:
                     text = getattr(button, "text", "") or ""
-                    if any(k in text for k in _RESCUE_KEYWORDS):
+                    cb = getattr(button, "data", b"") or b""
+                    try:
+                        cb_str = cb.decode() if isinstance(cb, bytes) else str(cb)
+                    except Exception:
+                        cb_str = ""
+                    if any(k in text for k in _RESCUE_KEYWORDS) or "rescue" in cb_str.lower() or "نجات" in cb_str:
                         target = button
                         break
                 if target:
@@ -50,16 +56,17 @@ async def _try_rescue(client, chat_id, msg):
                 break
             try:
                 await target.click()
+                _CLICKED.add(key)
                 print(f"[SAVE CAT] clicked rescue in {chat_id} (try {attempt+1})")
                 if SAVE_CAT_STATUS.get("announce"):
                     try:
-                        await client.send_message("me", f"🐈 **پیشی نجات پیدا کرد!**\n\n📍 چت: \n" + str(chat_id))
+                        await client.send_message("me", f"🐈 **پیشی نجات پیدا کرد!**\n\n📍 چت: <code>{chat_id}</code>")
                     except Exception as exc:
                         print(f"[SAVE CAT] announce error: {exc}")
+                break
             except Exception as exc:
                 print(f"[SAVE CAT] click error: {exc}")
-            await asyncio.sleep(0.2)
-        pass
+            await asyncio.sleep(0.3)
     finally:
         _INFLIGHT.discard(key)
 

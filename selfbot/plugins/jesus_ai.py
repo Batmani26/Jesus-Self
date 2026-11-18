@@ -194,9 +194,23 @@ def _needs_web(text: str) -> bool:
 
 _IMG_KEYWORDS = ("عکس", "تصویر", "پیکچر", "photo", "image", "picture", "pic")
 
+# Verbs/cues that indicate the user actually WANTS an image (not code/scripts about images)
+_IMG_REQUEST_CUES = (
+    "بفرست", "بده", "نشان", "نشون", "پیدا", "جستجو", "سرچ", "بگرد",
+    "send", "show", "find", "search", "give", "get",
+)
+# If the prompt asks for CODE/SCRIPT, never treat it as an image request
+_CODE_CUES = ("اسکریپت", "کد", "برنامه", "script", "code", "function", "تابع", "python", "پایتون", "بنویس", "write")
+
 def _needs_image(text: str) -> bool:
     low = text.lower()
-    return any(k in low for k in _IMG_KEYWORDS)
+    if not any(k in low for k in _IMG_KEYWORDS):
+        return False
+    # Reject if it's a coding request
+    if any(k in low for k in _CODE_CUES):
+        return False
+    # Require an actual request cue (otherwise just mentioning 'عکس' is not an image request)
+    return any(k in low for k in _IMG_REQUEST_CUES)
 
 
 def _img_ok(u: str) -> bool:

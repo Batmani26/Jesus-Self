@@ -29,34 +29,49 @@ def register(client) -> None:
                 pass
         return _me_id["v"]
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}تنظیم دشمن$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}تنظیم دشمن(?:\s+(.+))?$"))
     async def set_enemy(event: events.NewMessage.Event) -> None:
         uid = await _own_id()
         if not uid:
             return
-        if not event.is_reply:
-            await event.edit("❌ روی پیام شخص مورد نظر ریپلای کن و بعد دستور `.تنظیم دشمن` را بزن.")
-            return
+        arg = (event.pattern_match.group(1) or "").strip()
+        target = None
+        tname = "نامشخص"
         try:
-            replied = await event.get_reply_message()
-            target = replied.sender_id
+            if event.is_reply:
+                replied = await event.get_reply_message()
+                target = replied.sender_id
+                try:
+                    tsender = await replied.get_sender()
+                    tname = getattr(tsender, "first_name", None) or "نامشخص"
+                except Exception:
+                    pass
+            elif arg:
+                # Try numeric ID first
+                cleaned = arg.lstrip("@")
+                if cleaned.lstrip("-").isdigit():
+                    target = int(cleaned)
+                else:
+                    try:
+                        ent = await client.get_entity(cleaned)
+                        target = ent.id
+                        tname = getattr(ent, "first_name", None) or getattr(ent, "title", None) or cleaned
+                    except Exception:
+                        await event.edit(f"❌ کاربر <code>{arg}</code> پیدا نشد.", parse_mode="html")
+                        return
+            else:
+                await event.edit("❌ یا روی پیام شخص ریپلای کن، یا یوزرنیم/آیدی عددی بده: <code>.تنظیم دشمن @username</code>", parse_mode="html")
+                return
             if not target:
                 await event.edit("❌ نتوانستم کاربر هدف را تشخیص بدهم.")
                 return
             if target == uid:
                 await event.edit("😅 نمی‌تونی خودت رو دشمن کنی!")
                 return
-            try:
-                tsender = await replied.get_sender()
-                tname = getattr(tsender, "first_name", None) or "نامشخص"
-            except Exception:
-                tname = "نامشخص"
             from bot.database import add_enemy
             await add_enemy(uid, target, tname)
             await event.edit(
-                f"☠️ <b>{tname}</b> به لیست دشمنان افزوده شد.\n\n"
-                f"👤 <b>آیدی:</b> <code>{target}</code>\n\n"
-                f"<blockquote>از این به بعد هر پیامی از این شخص در پیوی یا گروه بفرستد، جواب فحش می‌گیرد.</blockquote>\n\n"
+                f"☠️ <b>{tname}</b> (<code>{target}</code>) به لیست دشمنان اضافه شد.\n\n"
                 f"{SIGNATURE}",
                 parse_mode="html",
             )

@@ -40,12 +40,18 @@ def _find_button(markup, keywords):
 async def _find_bot_reply(client, chat_id, sent_msg_id):
     """Find the message that replies to our 'ماهی' message."""
     try:
-        messages = await client.get_messages(chat_id, limit=6)
+        messages = await client.get_messages(chat_id, limit=12)
     except Exception as exc:
         print(f"[FISH] fetch error: {exc}")
         return None
     for m in messages or []:
         if getattr(m, "reply_to_msg_id", None) == sent_msg_id:
+            return m
+    # Fallback: any recent bot message that has a rarity marker AND a reply_markup with buttons
+    for m in messages or []:
+        txt = getattr(m, "text", "") or ""
+        markup = getattr(m, "reply_markup", None)
+        if markup and detect_rarity(txt):
             return m
     for m in messages or []:
         txt = getattr(m, "text", "") or ""
