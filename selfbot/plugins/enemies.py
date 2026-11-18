@@ -51,6 +51,11 @@ def register(client) -> None:
                 cleaned = arg.lstrip("@")
                 if cleaned.lstrip("-").isdigit():
                     target = int(cleaned)
+                    try:
+                        ent = await client.get_entity(target)
+                        tname = getattr(ent, "first_name", None) or getattr(ent, "title", None) or tname
+                    except Exception:
+                        pass
                 else:
                     try:
                         ent = await client.get_entity(cleaned)

@@ -139,6 +139,9 @@ def register(client) -> None:
         cached = _MSG_CACHE.get((event.chat_id, msg.id))
         old_text = cached["text"] if cached else "(نامشخص)"
         new_text = msg.raw_text or ""
+        # Skip false-positive edits: if text is unchanged, do nothing
+        if cached and (cached.get("text") or "") == new_text:
+            return
         try:
             sender = await msg.get_sender()
             name = getattr(sender, "first_name", None) or "نامشخص"

@@ -106,8 +106,8 @@ async def inline_panel(query: InlineQuery):
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
-            [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
-            [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
+            [InlineKeyboardButton(text="⚙️ مدیریت", callback_data="cat_manage"), InlineKeyboardButton(text="🎨 شخصی‌ساز اکانت", callback_data="cat_personalize")],
+            [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
             [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
             ])
         result = InlineQueryResultArticle(
@@ -160,8 +160,8 @@ async def panel_updater_loop():
                 # NOTE: must re-send inline buttons, otherwise edit strips them
                 kb = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
-                    [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
-                    [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
+                    [InlineKeyboardButton(text="⚙️ مدیریت", callback_data="cat_manage"), InlineKeyboardButton(text="🎨 شخصی‌ساز اکانت", callback_data="cat_personalize")],
+                    [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
                     [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
                 ])
                 await bot.edit_message_text(chat_id=chat_id, message_id=msg_id, text=text, reply_markup=kb, parse_mode="Markdown")
@@ -195,8 +195,8 @@ async def refresh_inline_panel(callback: CallbackQuery):
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
-        [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
-        [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
+        [InlineKeyboardButton(text="⚙️ مدیریت", callback_data="cat_manage"), InlineKeyboardButton(text="🎨 شخصی‌ساز اکانت", callback_data="cat_personalize")],
+        [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
         [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
     ])
     try:
@@ -710,6 +710,100 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer(f"{'✅ روشن شد' if TRANS_ENABLED['on'] else '❌ خاموش شد'}")
         except Exception:
             await callback.answer()
+        return
+
+    if data_str == "cat_manage":
+        info_text = (
+            "⚙️ <b>بخش مدیریت</b>\n\n"
+            "<b>📖 آموزش دستورات:</b>\n\n"
+            "🗑 <b>حذف پیام</b>\n"
+            "<blockquote>روی پیام مورد نظر ریپلای کن و <code>.حذف</code> بزن؛ پیام برای هر دو طرف پاک می‌شود.\n"
+            "برای پاک کردن تعداد بالا: <code>.حذف 100</code> (بین 1 تا 100). در گروه تاپیک‌دار فقط پیام‌های همان تاپیک پاک می‌شوند و باید ادمین با دسترسی حذف باشی.</blockquote>\n\n"
+            "🔇 <b>سکوت</b>\n"
+            "<blockquote>در پیوی روی پیام کاربر ریپلای کن و <code>.سکوت</code> بزن؛ از این به بعد هر پیام او فوراً حذف می‌شود (بدون بلاک).</blockquote>\n\n"
+            "🔒 <b>قفل پیوی</b>\n"
+            "<blockquote>با <code>.قفل پیوی</code> وضعیت را تغییر بده. وقتی فعال باشد، هر پیام ورودی در پیوی فوراً حذف می‌شود.</blockquote>\n\n"
+            "🤖 <b>منشی</b>\n"
+            "<blockquote>اول متن را تنظیم کن: <code>.تنظیم متن منشی [متن]</code>\n"
+            "بعد روشن/خاموش: <code>.منشی روشن</code> / <code>.منشی خاموش</code>\n"
+            "وقتی روشن باشد، سلف در پیوی به پیام‌های جدید به‌صورت خودکار پاسخ می‌دهد.</blockquote>\n\n"
+            "💥 <b>اسپم</b>\n"
+            "<blockquote><code>.اسپم متن 50</code> — متن را ۵۰ بار (بین 1 تا 100) در همین چت می‌فرستد و در پایان اعلام می‌کند.</blockquote>\n\n"
+            "👇 روی هر دستور کلیک کن تا کپی شود."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "cat_personalize" or data_str.startswith("pers_tog:"):
+        from bot.database import get_setting, toggle_setting
+        if data_str.startswith("pers_tog:"):
+            col = data_str.split(":", 1)[1]
+            try:
+                await toggle_setting(callback.from_user.id, col)
+                await callback.answer("✅ تغییر کرد")
+            except Exception as e:
+                await callback.answer(f"خطا: {e}", show_alert=True)
+        ao = await get_setting(callback.from_user.id, "always_online", 0)
+        at = await get_setting(callback.from_user.id, "always_typing", 0)
+        asn = await get_setting(callback.from_user.id, "auto_seen", 0)
+        def _st(v):
+            return "روشن 🟢" if v else "خاموش 🔴"
+        info_text = (
+            "🎨 <b>شخصی‌ساز اکانت</b>\n\n"
+            "<b>📖 آموزش:</b>\n"
+            "🟢 <b>همیشه آنلاین</b>\n<blockquote>وقتی روشن باشد، اکانت شما هرگز آفلاین نمی‌شود.</blockquote>\n"
+            "✍️ <b>همیشه در حال نوشتن</b>\n<blockquote>در گروه‌ها همیشه حالت «در حال نوشتن...» نمایش داده می‌شود.</blockquote>\n"
+            "👁 <b>سین خودکار</b>\n<blockquote>پیام‌های جدید به‌صورت خودکار خوانده (Seen) می‌شوند.</blockquote>\n\n"
+            "👇 با دکمه‌ها وضعیت را تغییر بده:"
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=f"🟢 همیشه آنلاین: {_st(ao)}", callback_data="pers_tog:always_online")],
+            [InlineKeyboardButton(text=f"✍️ همیشه در حال نوشتن: {_st(at)}", callback_data="pers_tog:always_typing")],
+            [InlineKeyboardButton(text=f"👁 سین خودکار: {_st(asn)}", callback_data="pers_tog:auto_seen")],
+            [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "back_to_panel":
+        from bot.database import get_yaqoot as _gy
+        balance = await _gy(callback.from_user.id)
+        text = (
+            "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
+            f"💎 موجودی: **{balance}** یاقوت\n\n"
+            "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
+            [InlineKeyboardButton(text="⚙️ مدیریت", callback_data="cat_manage"), InlineKeyboardButton(text="🎨 شخصی‌ساز اکانت", callback_data="cat_personalize")],
+            [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
+            [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
+        ])
+        try:
+            if callback.message:
+                await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+            else:
+                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="Markdown")
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
         return
 
     if data_str == "tool_ai_info":

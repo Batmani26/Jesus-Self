@@ -11,8 +11,8 @@ async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None):
         return
     try:
         parts = interval_str.strip().split(':')
-        # Format is SECONDS:MINUTES (first = seconds, second = minutes)
-        cooldown = int(parts[0]) + (int(parts[1]) * 60)
+        # Format is MINUTES:SECONDS (first = minutes, second = seconds)
+        cooldown = (int(parts[0]) * 60) + int(parts[1])
         if cooldown <= 0:
             raise ValueError()
     except Exception:
@@ -62,10 +62,10 @@ def register(client) -> None:
         interval = event.pattern_match.group(1).strip()
         from bot.database import set_fishing_interval
         parts = interval.strip().split(':')
-        secs = int(parts[0]); mins = int(parts[1])
-        total = secs + mins * 60
+        mins = int(parts[0]); secs = int(parts[1])
+        total = mins * 60 + secs
         await set_fishing_interval(me.id, interval)
-        await event.edit(f"✅ زمان ماهیگیری شما روی **{interval}** (ثانیه:دقیقه) = هر **{total}** ثانیه تنظیم شد.")
+        await event.edit(f"✅ زمان ماهیگیری شما روی **{interval}** (دقیقه:ثانیه) = هر **{total}** ثانیه تنظیم شد.")
 
     @client.on(events.NewMessage(outgoing=True, pattern="^" + re.escape(p) + "ماهیگیری روشن$"))
     async def start_fishing(event: events.NewMessage.Event) -> None:
@@ -78,7 +78,7 @@ def register(client) -> None:
             await event.edit("⚠️ **خطا:** لطفاً ابتدا چت مقصد را با دستور `.تنظیم میویی` مشخص کنید.")
             return
         if not interval:
-            await event.edit("⚠️ **خطا:** لطفاً ابتدا زمان ماهیگیری خود را با دستور `.تنظیم زمان ماهیگیری 4:20` تنظیم کنید.")
+            await event.edit("⚠️ **خطا:** لطفاً ابتدا زمان ماهیگیری خود را با دستور `.تنظیم زمان ماهیگیری 4:20` (دقیقه:ثانیه) تنظیم کنید.")
             return
             
         chat_id = int(target['chat_id'])

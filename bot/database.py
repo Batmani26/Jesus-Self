@@ -61,6 +61,13 @@ async def init_db():
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS g_deleted INTEGER DEFAULT 1')
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS g_selfdestruct INTEGER DEFAULT 1')
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS g_edited INTEGER DEFAULT 1')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS secretary_on INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS secretary_text TEXT')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS lock_pv INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS always_online INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS always_typing INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_seen INTEGER DEFAULT 0')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS muted_users BIGINT[] DEFAULT \'{}\'')
             await conn.execute('''
                 CREATE TABLE IF NOT EXISTS enemies (
                     user_id BIGINT NOT NULL,
@@ -331,6 +338,52 @@ async def deduct_yaqoot(user_id, amount):
     await init_db()
     async with pool.acquire() as conn:
         await conn.execute('UPDATE users SET yaqoot_balance = yaqoot_balance - $1, last_deduction = CURRENT_TIMESTAMP WHERE user_id = $2', amount, user_id)
+
+async def get_setting(user_id, col, default=None):
+    await init_db()
+    allowed = {"secretary_on","secretary_text","lock_pv","always_online","always_typing","auto_seen"}
+    if col not in allowed:
+        raise ValueError("bad col")
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(f"SELECT {col} FROM users WHERE user_id = $1", user_id)
+        return row[col] if row and row[col] is not None else default
+
+async def set_setting(user_id, col, value):
+    await init_db()
+    allowed = {"secretary_on","secretary_text","lock_pv","always_online","always_typing","auto_seen"}
+    if col not in allowed:
+        raise ValueError("bad col")
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING', user_id)
+        await conn.execute(f"UPDATE users SET {col} = $1 WHERE user_id = $2", value, user_id)
+
+async def toggle_setting(user_id, col):
+    cur = await get_setting(user_id, col, 0)
+    new = 0 if cur else 1
+    await set_setting(user_id, col, new)
+    return bool(new)
+
+async def add_muted(user_id, target_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING', user_id)
+        await conn.execute('UPDATE users SET muted_users = array_append(COALESCE(muted_users, \'{}\'), $1) WHERE user_id = $2 AND NOT ($1 = ANY(COALESCE(muted_users, \'{}\')))', target_id, user_id)
+
+async def remove_muted(user_id, target_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE users SET muted_users = array_remove(COALESCE(muted_users, \'{}\'), $1) WHERE user_id = $2', target_id, user_id)
+
+async def get_muted(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow('SELECT muted_users FROM users WHERE user_id = $1', user_id)
+        return list(row['muted_users'] or []) if row else []
+
+async def is_muted(user_id, target_id):
+    m = await get_muted(user_id)
+    return target_id in m
+
 
 async def add_enemy(user_id, enemy_id, enemy_name):
     await init_db()
