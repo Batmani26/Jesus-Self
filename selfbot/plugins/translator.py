@@ -19,16 +19,28 @@ def detect_lang(text: str) -> str:
 
 def register(client) -> None:
     p = config.PREFIX
+    _me_id = {"v": None}
+
+    async def _own_id():
+        if _me_id["v"] is None:
+            try:
+                me = await client.get_me()
+                _me_id["v"] = me.id
+            except Exception:
+                pass
+        return _me_id["v"]
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}ترجمه (.+)$"))
     async def translate(event: events.NewMessage.Event) -> None:
+        uid = await _own_id()
         try:
-            from bot.main import TRANS_ENABLED
+            from bot.database import get_feature_flags
+            flags = await get_feature_flags(uid) if uid else {}
+            if not flags.get("trans_on", True):
+                await event.reply("🔴 قابلیت ترجمه خاموش است. از پنل روشنش کن.")
+                return
         except Exception:
-            TRANS_ENABLED = {"on": True}
-        if not TRANS_ENABLED.get("on", True):
-            await event.reply("🔴 قابلیت ترجمه خاموش است. از پنل روشنش کن.")
-            return
+            pass
 
         text = event.pattern_match.group(1).strip()
         lang = detect_lang(text)

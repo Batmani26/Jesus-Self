@@ -1,31 +1,20 @@
-"""Chat Guardian: saves deleted / self-destructing / edited messages to Saved Messages.
+"""Chat Guardian: saves deleted / self-destructing / edited private messages to Saved Messages.
 
-Features (toggle from the panel 'نگهبان چت'):
-- deleted:      forward deleted private messages
-- selfdestruct: save self-destructing media immediately
-- edited:       save original + new text of edited messages
+Per-user toggles are read from DB (g_deleted, g_selfdestruct, g_edited).
+Only handles PRIVATE chats from real users (not bots/groups).
 """
 import logging
 from datetime import datetime
 
-from telethon import events, types
+from telethon import events
 
 from selfbot.config import config
 
 log = logging.getLogger("selfbot.guardian")
 
-SIGNATURE = "\n\n🛡 نگهبان چت | Jesus Self"
-# Simple in-memory cache of recent incoming messages: {(chat_id, msg_id): {text, sender, date, media}}
+SIGNATURE = "🛡 Jesus Self | نگهبان چت"
 _MSG_CACHE = {}
 _CACHE_MAX = 500
-
-
-def _toggle(key: str) -> bool:
-    try:
-        from bot.main import GUARDIAN
-        return GUARDIAN.get(key, True)
-    except Exception:
-        return True
 
 
 def _fmt_dt(dt) -> str:
@@ -33,11 +22,9 @@ def _fmt_dt(dt) -> str:
         import pytz
         tz = pytz.timezone("Asia/Tehran")
         if dt.tzinfo is None:
-            # Telethon dates are UTC-aware normally; if naive assume UTC
             import datetime as _dtmod
             dt = dt.replace(tzinfo=_dtmod.timezone.utc)
-        local = dt.astimezone(tz)
-        return local.strftime("%Y/%m/%d %H:%M")
+        return dt.astimezone(tz).strftime("%Y/%m/%d %H:%M")
     except Exception:
         try:
             import pytz
@@ -47,21 +34,54 @@ def _fmt_dt(dt) -> str:
 
 
 def _cache_put(chat_id, msg_id, data):
+    # Only cache PRIVATE chats (positive user IDs, not groups/channels with negative IDs)
+    try:
+        cid = int(chat_id)
+    except Exception:
+        return
+    if cid < 0:
+        return
     _MSG_CACHE[(chat_id, msg_id)] = data
     if len(_MSG_CACHE) > _CACHE_MAX:
-        # drop oldest ~100
         for k in list(_MSG_CACHE.keys())[:100]:
             _MSG_CACHE.pop(k, None)
 
 
 def register(client) -> None:
+    _me_id = {"v": None}
+
+    async def _flags():
+        if _me_id["v"] is None:
+            try:
+                me = await client.get_me()
+                _me_id["v"] = me.id
+            except Exception:
+                return {}
+        try:
+            from bot.database import get_feature_flags
+            return await get_feature_flags(_me_id["v"])
+        except Exception:
+            return {}
+
     @client.on(events.NewMessage(incoming=True))
-    async def _cache_and_selfdestruct(event: events.NewMessage.Event) -> None:
+    async def _on_new(event: events.NewMessage.Event) -> None:
+        if not event.is_private:
+            return
+        try:
+            if int(event.chat_id) < 0:
+                return
+        except Exception:
+            return
+        try:
+            sender = await event.get_sender()
+            if getattr(sender, "bot", False):
+                return
+        except Exception:
+            pass
         msg = event.message
-        # cache for deleted-detection
         try:
             sender = await msg.get_sender()
-            name = getattr(sender, "first_name", None) or getattr(sender, "title", None) or "نامشخص"
+            name = getattr(sender, "first_name", None) or "نامشخص"
             _cache_put(event.chat_id, msg.id, {
                 "text": msg.raw_text or "",
                 "sender_id": msg.sender_id,
@@ -72,10 +92,10 @@ def register(client) -> None:
         except Exception:
             pass
 
-        # self-destructing media
         if not msg.media:
             return
-        if not _toggle("selfdestruct"):
+        flags = await _flags()
+        if not flags.get("g_selfdestruct", True):
             return
         is_ttl = bool(getattr(msg.media, "ttl_seconds", None))
         if not is_ttl:
@@ -84,26 +104,26 @@ def register(client) -> None:
             data = await client.download_media(msg, file=bytes)
             if not data:
                 return
+            name = "نامشخص"
             try:
-                sender = await msg.get_sender()
-                name = getattr(sender, "first_name", None) or "نامشخص"
+                snd = await msg.get_sender()
+                name = getattr(snd, "first_name", None) or "نامشخص"
             except Exception:
-                name = "نامشخص"
+                pass
             caption = (
-                f"💥 **مدیای نابود شونده ذخیره شد**\n"
-                f"👤 از: {name} (`{msg.sender_id}`)\n"
-                f"📅 {_fmt_dt(msg.date)}" + SIGNATURE
+                f"💥 <b>مدیای نابود شونده ذخیره شد</b>\n\n"
+                f"<blockquote>این رسانه پس از مشاهده نابود می‌شد و اکنون در امان است.</blockquote>\n\n"
+                f"👤 <b>از:</b> {name} (<code>{msg.sender_id}</code>)\n"
+                f"📅 <b>تاریخ:</b> {_fmt_dt(msg.date)}\n\n"
+                f"{SIGNATURE}"
             )
-            await client.send_file("me", data, caption=caption)
+            await client.send_file("me", data, caption=caption, parse_mode="html")
             log.info("Saved self-destructing media from %s", msg.sender_id)
         except Exception as e:
             log.warning(f"selfdestruct save failed: {e}")
 
     @client.on(events.MessageEdited(incoming=True))
     async def _on_edited(event: events.MessageEdited.Event) -> None:
-        if not _toggle("edited"):
-            return
-        # Only private chats from real users (not bots, not groups/channels)
         if not event.is_private:
             return
         try:
@@ -112,6 +132,9 @@ def register(client) -> None:
                 return
         except Exception:
             pass
+        flags = await _flags()
+        if not flags.get("g_edited", True):
+            return
         msg = event.message
         cached = _MSG_CACHE.get((event.chat_id, msg.id))
         old_text = cached["text"] if cached else "(نامشخص)"
@@ -121,16 +144,16 @@ def register(client) -> None:
             name = getattr(sender, "first_name", None) or "نامشخص"
         except Exception:
             name = "نامشخص"
-        caption = (
-            f"✏️ **پیام ویرایش شد**\n"
-            f"👤 از: {name} (`{msg.sender_id}`)\n"
-            f"📅 {_fmt_dt(msg.date)}\n\n"
-            f"🔸 قبل:\n{old_text}\n\n"
-            f"🔹 بعد:\n{new_text}" + SIGNATURE
+        body = (
+            f"✏️ <b>پیام ویرایش شد</b>\n\n"
+            f"<blockquote><b>Original:</b>\n{old_text}</blockquote>\n\n"
+            f"<blockquote><b>Edited:</b>\n{new_text}</blockquote>\n\n"
+            f"👤 <b>از:</b> {name} (<code>{msg.sender_id}</code>)\n"
+            f"📅 <b>تاریخ:</b> {_fmt_dt(msg.date)}\n\n"
+            f"{SIGNATURE}"
         )
         try:
-            await client.send_message("me", caption)
-            # update cache
+            await client.send_message("me", body, parse_mode="html")
             if cached:
                 cached["text"] = new_text
                 _MSG_CACHE[(event.chat_id, msg.id)] = cached
@@ -139,37 +162,38 @@ def register(client) -> None:
 
     @client.on(events.MessageDeleted())
     async def _on_deleted(event: events.MessageDeleted.Event) -> None:
-        if not _toggle("deleted"):
-            return
         ids = list(event.deleted_ids or [])
         if not ids and getattr(event, "deleted_id", None):
             ids = [event.deleted_id]
-        log.info(f"[guardian] deleted event chat={event.chat_id} ids={ids} cache_size={len(_MSG_CACHE)}")
+        try:
+            if int(event.chat_id) < 0:
+                return
+        except Exception:
+            return
         for msg_id in ids:
-            # Try exact key first
             cached = _MSG_CACHE.pop((event.chat_id, msg_id), None)
             if not cached:
-                # Fallback: scan cache for this msg_id in any chat (handles chat_id mismatch)
                 for k in list(_MSG_CACHE.keys()):
-                    if k[1] == msg_id:
+                    if k[1] == msg_id and int(k[0]) == int(event.chat_id):
                         cached = _MSG_CACHE.pop(k, None)
                         break
             if not cached:
                 continue
+            flags = await _flags()
+            if not flags.get("g_deleted", True):
+                continue
             text = cached["text"] or ""
             if not text and not cached["has_media"]:
                 continue
-            sender_name = cached["sender_name"]
-            sender_id = cached["sender_id"]
-            when = _fmt_dt(cached["date"])
             body = (
-                f"🗑 **پیام حذف شد**\n"
-                f"👤 از: {sender_name} (`{sender_id}`)\n"
-                f"📅 تاریخ پیام: {when}\n\n"
-                f"📝 متن:\n{text if text else '(فقط رسانه بود)'}" + SIGNATURE
+                f"🗑 <b>پیام حذف شد</b>\n\n"
+                f"<blockquote>{text if text else '(فقط رسانه بود)'}</blockquote>\n\n"
+                f"👤 <b>از:</b> {cached['sender_name']} (<code>{cached['sender_id']}</code>)\n"
+                f"📅 <b>تاریخ:</b> {_fmt_dt(cached['date'])}\n\n"
+                f"{SIGNATURE}"
             )
             try:
-                await client.send_message("me", body)
-                log.info("Saved deleted message from %s", sender_id)
+                await client.send_message("me", body, parse_mode="html")
+                log.info("Saved deleted message from %s", cached['sender_id'])
             except Exception as e:
                 log.warning(f"deleted save failed: {e}")

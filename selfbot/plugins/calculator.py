@@ -49,6 +49,16 @@ _HAS_OP = re.compile(r"[+\-*/%]")
 
 def register(client) -> None:
     p = config.PREFIX
+    _me_id = {"v": None}
+
+    async def _own_id():
+        if _me_id["v"] is None:
+            try:
+                me = await client.get_me()
+                _me_id["v"] = me.id
+            except Exception:
+                pass
+        return _me_id["v"]
 
     @client.on(events.NewMessage(outgoing=True))
     async def auto_calc(event: events.NewMessage.Event) -> None:
@@ -56,6 +66,15 @@ def register(client) -> None:
         raw = (event.raw_text or "").strip()
         if not raw or len(raw) > 80 or raw.startswith(p):
             return
+        # Per-user toggle: check flags BEFORE doing any math work
+        uid = await _own_id()
+        try:
+            from bot.database import get_feature_flags
+            flags = await get_feature_flags(uid) if uid else {}
+            if not flags.get("calc_on", True):
+                return
+        except Exception:
+            pass
         txt = _normalize(raw)
         if not txt or len(txt) > 80:
             return
@@ -63,12 +82,14 @@ def register(client) -> None:
             return
         if not re.search(r"\d", txt):
             return
+        uid = await _own_id()
         try:
-            from bot.main import CALC_ENABLED
+            from bot.database import get_feature_flags
+            flags = await get_feature_flags(uid) if uid else {}
+            if not flags.get("calc_on", True):
+                return
         except Exception:
-            CALC_ENABLED = {"on": True}
-        if not CALC_ENABLED.get("on", True):
-            return
+            pass
         try:
             result = safe_eval(txt)
             if isinstance(result, float):

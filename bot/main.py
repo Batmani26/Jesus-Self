@@ -551,19 +551,24 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
 
-    if data_str == "tool_calc_info":
-        st = "🟢 روشن" if CALC_ENABLED.get("on", True) else "🔴 خاموش"
+    if data_str in ("tool_calc_info", "tog_calc"):
+        from bot.database import get_feature_flags, toggle_feature
+        if data_str == "tog_calc":
+            await toggle_feature(callback.from_user.id, "calc_on")
+        flags = await get_feature_flags(callback.from_user.id)
+        on = flags.get("calc_on", True)
+        st = "🟢 روشن" if on else "🔴 خاموش"
+        btn = "🔴 خاموش کن" if on else "🟢 روشن کن"
         info_text = (
             "🧮 <b>ماشین حساب خودکار</b>\n\n"
-            f"وضعیت: <b>{st}</b>\n\n"
-            "<blockquote>وقتی روشن باشد، هر پیامی که شامل عملگر + - * / باشد، به‌طور خودکار حل و جواب داده می‌شود.</blockquote>\n\n"
+            f"وضعیت شما: <b>{st}</b>\n\n"
+            "<blockquote>وقتی روشن باشد، هر پیامی که شامل عملگر + - * / باشد، خودکار حل می‌شود و نتیجه به همان پیام اضافه می‌شود.</blockquote>\n\n"
             "<b>مثال‌ها:</b>\n"
             "<code>5+3</code> → 8\n"
-            "<code>12 * 4</code> → 48\n"
+            "<code>145+3+6+158*3</code> → 628\n"
             "<code>(7-2)/5</code> → 1\n\n"
-            "👇 دکمه پایین برای روشن/خاموش کردن:"
+            "👇 دکمه پایین برای روشن/خاموش کردن (فقط برای حساب شما):"
         )
-        btn = "🔴 خاموش کن" if CALC_ENABLED.get("on", True) else "🟢 روشن کن"
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text=btn, callback_data="tog_calc")],
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
@@ -573,38 +578,9 @@ async def process_inline_panel_callback(callback: CallbackQuery):
                 await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
             else:
                 await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
-            await callback.answer()
+            await callback.answer(("✅ روشن شد" if on else "❌ خاموش شد") if data_str == "tog_calc" else None)
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
-        return
-
-    if data_str == "tog_calc":
-        CALC_ENABLED["on"] = not CALC_ENABLED.get("on", True)
-        await process_inline_panel_callback(callback) if False else None
-        st = "🟢 روشن" if CALC_ENABLED["on"] else "🔴 خاموش"
-        btn = "🔴 خاموش کن" if CALC_ENABLED["on"] else "🟢 روشن کن"
-        info_text = (
-            "🧮 <b>ماشین حساب خودکار</b>\n\n"
-            f"وضعیت: <b>{st}</b>\n\n"
-            "<blockquote>وقتی روشن باشد، هر پیامی که شامل عملگر + - * / باشد، به‌طور خودکار حل و جواب داده می‌شود.</blockquote>\n\n"
-            "<b>مثال‌ها:</b>\n"
-            "<code>5+3</code> → 8\n"
-            "<code>12 * 4</code> → 48\n"
-            "<code>(7-2)/5</code> → 1\n\n"
-            "👇 دکمه پایین برای روشن/خاموش کردن:"
-        )
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=btn, callback_data="tog_calc")],
-            [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
-        ])
-        try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
-            await callback.answer(f"{'✅ روشن شد' if CALC_ENABLED['on'] else '❌ خاموش شد'}")
-        except Exception:
-            await callback.answer()
         return
 
     if data_str == "tool_translate_info":

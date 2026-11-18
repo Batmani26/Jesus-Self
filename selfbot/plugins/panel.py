@@ -50,6 +50,31 @@ def register(client) -> None:
                 await event.answer("🎮 بخش بازی‌ها (به‌زودی)", alert=True)
             elif data == "cat_tools":
                 await event.answer("🛠 ابزارها: .جیزس [سوال] برای هوش مصنوعی (Grok+Gemini)", alert=True)
+            elif data == "toggle_calc":
+                from bot.database import toggle_feature
+                me = await event.client.get_me()
+                new = await toggle_feature(me.id, "calc_on")
+                await event.answer("✅ ماشین‌حساب روشن شد" if new else "🔴 ماشین‌حساب خاموش شد", alert=True)
+            elif data == "toggle_trans":
+                from bot.database import toggle_feature
+                me = await event.client.get_me()
+                new = await toggle_feature(me.id, "trans_on")
+                await event.answer("✅ ترجمه روشن شد" if new else "🔴 ترجمه خاموش شد", alert=True)
+            elif data == "toggle_gdel":
+                from bot.database import toggle_feature
+                me = await event.client.get_me()
+                new = await toggle_feature(me.id, "g_deleted")
+                await event.answer("✅ ذخیره پیام‌های حذف‌شده روشن شد" if new else "🔴 ذخیره پیام‌های حذف‌شده خاموش شد", alert=True)
+            elif data == "toggle_gedit":
+                from bot.database import toggle_feature
+                me = await event.client.get_me()
+                new = await toggle_feature(me.id, "g_edited")
+                await event.answer("✅ ذخیره پیام‌های ویرایش‌شده روشن شد" if new else "🔴 ذخیره پیام‌های ویرایش‌شده خاموش شد", alert=True)
+            elif data == "toggle_gttl":
+                from bot.database import toggle_feature
+                me = await event.client.get_me()
+                new = await toggle_feature(me.id, "g_selfdestruct")
+                await event.answer("✅ ذخیره مدیای نابودشونده روشن شد" if new else "🔴 ذخیره مدیای نابودشونده خاموش شد", alert=True)
             elif data == "tool_ai_info":
                 await event.answer("🧠 برای چت با AI از دستور .جیزس استفاده کن", alert=True)
             elif data == "tool_grok_info":

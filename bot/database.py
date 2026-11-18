@@ -56,6 +56,11 @@ async def init_db():
             await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS save_cat_announce INTEGER DEFAULT 0")
             await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS save_cat_scanning INTEGER DEFAULT 0")
             await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS meow_interval TEXT')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS calc_on INTEGER DEFAULT 1')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS trans_on INTEGER DEFAULT 1')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS g_deleted INTEGER DEFAULT 1')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS g_selfdestruct INTEGER DEFAULT 1')
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS g_edited INTEGER DEFAULT 1')
 
 async def add_user(user_id, username, first_name):
     await init_db()
@@ -255,6 +260,50 @@ async def get_meow_target_db(user_id):
         if row and row['meow_chat_id']:
             return {"chat_id": row['meow_chat_id'], "chat_title": row['meow_chat_title']}
         return None
+
+async def get_feature_flags(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT calc_on, trans_on, g_deleted, g_selfdestruct, g_edited FROM users WHERE user_id = $1",
+            user_id,
+        )
+        if not row:
+            return {"calc_on": True, "trans_on": True, "g_deleted": True, "g_selfdestruct": True, "g_edited": True}
+        return {
+            "calc_on": bool(row["calc_on"]),
+            "trans_on": bool(row["trans_on"]),
+            "g_deleted": bool(row["g_deleted"]),
+            "g_selfdestruct": bool(row["g_selfdestruct"]),
+            "g_edited": bool(row["g_edited"]),
+        }
+
+
+async def toggle_feature(user_id, column, default=1):
+    """Flip a boolean feature column for a user. Returns new value."""
+    await init_db()
+    allowed = {"calc_on", "trans_on", "g_deleted", "g_selfdestruct", "g_edited"}
+    if column not in allowed:
+        raise ValueError("bad column")
+    async with pool.acquire() as conn:
+        # ensure row exists
+        await conn.execute('INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING', user_id)
+        row = await conn.fetchrow(f"SELECT {column} FROM users WHERE user_id = $1", user_id)
+        cur = row[column] if row else default
+        new = 0 if cur else 1
+        await conn.execute(f"UPDATE users SET {column} = $1 WHERE user_id = $2", new, user_id)
+        return bool(new)
+
+
+async def set_feature(user_id, column, value: bool):
+    await init_db()
+    allowed = {"calc_on", "trans_on", "g_deleted", "g_selfdestruct", "g_edited"}
+    if column not in allowed:
+        raise ValueError("bad column")
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING', user_id)
+        await conn.execute(f"UPDATE users SET {column} = $1 WHERE user_id = $2", 1 if value else 0, user_id)
+
 
 async def get_all_active_users():
     await init_db()
