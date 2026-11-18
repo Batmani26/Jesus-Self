@@ -1181,23 +1181,40 @@ async def cmd_broadcast(message: Message):
     if ADMIN_ID:
         ids.add(ADMIN_ID)
 
+    # Auto-detect formatting: Telegram bold (<b>/<strong>) or HTML tag => HTML mode;
+    # `**bold**` => Markdown; otherwise plain text. This prevents parse errors.
+    low = payload.lower()
+    if any(t in low for t in ("<b>", "<i>", "<u>", "<s>", "<a ", "<code>", "<pre>", "<blockquote>")):
+        parse_mode = "HTML"
+    elif "**" in payload or "__" in payload or "`" in payload:
+        parse_mode = "Markdown"
+    else:
+        parse_mode = None
+
+    async def _send_one(uid):
+        if replied and (replied.photo or replied.video or replied.document):
+            await bot.copy_message(chat_id=uid, from_chat_id=replied.chat.id, message_id=replied.message_id)
+            return
+        try:
+            await bot.send_message(uid, payload, parse_mode=parse_mode)
+        except Exception:
+            # Fallback to plain text if formatting is invalid
+            await bot.send_message(uid, payload)
+
     sent = 0
     failed = 0
     for uid in ids:
         try:
-            if replied and (replied.photo or replied.video or replied.document):
-                await bot.copy_message(chat_id=uid, from_chat_id=replied.chat.id, message_id=replied.message_id)
-            else:
-                await bot.send_message(uid, payload, parse_mode="Markdown")
+            await _send_one(uid)
             sent += 1
         except Exception:
             failed += 1
         await asyncio.sleep(0.05)
 
     await status.edit_text(
-        f"✅ **ارسال نسخهٔ جدید به پایان رسید**\n\n"
-        f"📬 موفق: `{sent}`\n❌ ناموفق: `{failed}`\n👥 کل: `{len(ids)}`",
-        parse_mode="Markdown",
+        f"✅ <b>ارسال نسخهٔ جدید به پایان رسید</b>\n\n"
+        f"📬 موفق: <code>{sent}</code>\n❌ ناموفق: <code>{failed}</code>\n👥 کل: <code>{len(ids)}</code>",
+        parse_mode="HTML",
     )
 
 
