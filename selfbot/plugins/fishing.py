@@ -11,13 +11,14 @@ async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None):
         return
     try:
         parts = interval_str.strip().split(':')
-        cooldown = (int(parts[0]) * 60) + int(parts[1])
+        # Format is SECONDS:MINUTES (first = seconds, second = minutes)
+        cooldown = int(parts[0]) + (int(parts[1]) * 60)
         if cooldown <= 0:
             raise ValueError()
     except Exception:
         return
     loop = asyncio.get_event_loop()
-    next_send = loop.time() + cooldown
+    next_send = loop.time()  # send immediately, then wait cooldown
     while True:
         try:
             if user_id is None:
@@ -60,8 +61,11 @@ def register(client) -> None:
         me = await client.get_me()
         interval = event.pattern_match.group(1).strip()
         from bot.database import set_fishing_interval
+        parts = interval.strip().split(':')
+        secs = int(parts[0]); mins = int(parts[1])
+        total = secs + mins * 60
         await set_fishing_interval(me.id, interval)
-        await event.edit(f"✅ زمان ماهیگیری شما روی **{interval}** (دقیقه:ثانیه) تنظیم شد.")
+        await event.edit(f"✅ زمان ماهیگیری شما روی **{interval}** (ثانیه:دقیقه) = هر **{total}** ثانیه تنظیم شد.")
 
     @client.on(events.NewMessage(outgoing=True, pattern="^" + re.escape(p) + "ماهیگیری روشن$"))
     async def start_fishing(event: events.NewMessage.Event) -> None:
@@ -86,7 +90,7 @@ def register(client) -> None:
             return
             
         await event.edit(f"✅ شروع ماهیگیری در چت **{target['chat_title']}** با تایم **{interval}**...")
-        FISHING_TASKS[chat_id] = asyncio.create_task(fishing_loop_wrapper(client, chat_id, interval))
+        FISHING_TASKS[chat_id] = asyncio.create_task(fishing_loop_wrapper(client, chat_id, interval, me.id))
         await set_fishing_active(me.id, 1)
 
     @client.on(events.NewMessage(outgoing=True, pattern="^" + re.escape(p) + "ماهیگیری خاموش$"))

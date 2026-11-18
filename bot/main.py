@@ -211,7 +211,7 @@ async def refresh_inline_panel(callback: CallbackQuery):
         else:
             await callback.answer(f"❌ خطا در بروزرسانی: {e}", show_alert=True)
 
-@dp.callback_query(F.data.startswith("cat_") | F.data.startswith("tool_") | F.data.startswith("tog_") | F.data.startswith("enemy_del:") | (F.data == "back_to_panel"))
+@dp.callback_query(F.data.startswith("cat_") | F.data.startswith("tool_") | F.data.startswith("tog_") | F.data.startswith("enemy_del:") | (F.data == "curse_list") | (F.data == "back_to_panel"))
 async def process_inline_panel_callback(callback: CallbackQuery):
     data_str = callback.data
     if data_str == "cat_casino_info":
@@ -739,42 +739,12 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             "<code>.جیزس آخرین اخبار تکنولوژی</code>\n"
             "<code>.جیزس نتیجه بازی رئال</code>\n"
             "<code>.جیزس هوا تهران فردا چطوره</code>\n\n"
-            "🌐 <b>مترجم چندزبانه</b>\n"
-            "<code>.جیزس این متن رو به انگلیسی ترجمه کن</code>\n"
-            "<code>.جیزس Hello رو به ژاپنی بگو</code>\n\n"
-            "🖼 <b>شکارچی عکس (از اینترنت)</b>\n"
-            "۳ عکس واقعی و باکیفیت پیدا می‌کنه و می‌فرسته!\n"
-            "<code>.جیزس عکس برج میلاد</code>\n"
-            "<code>.جیزس عکس ایفل</code>\n"
-            "<code>.جیزس عکس گربه پشمالو</code>\n\n"
-            "👥 <b>حافظه چت هوشمند</b>\n"
-            "۱۰ پیام آخر چت رو می‌خونه و تحلیل می‌کنه.\n"
-            "<code>.جیزس این چت درباره چیه؟</code>\n"
-            "<code>.جیزس خلاصه بحث امروز</code>\n\n"
             "📝 <b>نویسنده و خلاصه‌ساز</b>\n"
-            "<code>.جیزس یه کپشن اینستاگرام برای این عکس بنویس</code>\n"
+            "<code>.جیزس یه کپشن برای این عکس بنویس</code>\n"
             "<code>.جیزس این متن طولانی رو خلاصه کن</code>\n\n"
             "🎓 <b>معلم خصوصی</b>\n"
-            "<code>.جیزس قانون نیوتن رو ساده توضیح بده</code>\n"
-            "<code>.جیزس ریاضی دهم رو برام حل کن</code>\n\n"
+            "<code>.جیزس قانون نیوتن رو ساده توضیح بده</code>\n\n"
             "━━━━━━━━━━━━━━━━━━\n"
-            "⚙️ <b>پشت صحنه — ۵ مغز هم‌زمان:</b>\n"
-            "🥇 Grok 2 (xAI — ایلان ماسک)\n"
-            "🥈 Gemini 2.0 Flash (گوگل)\n"
-            "🥉 Llama 3.3 70B (Meta via Groq)\n"
-            "🏅 GPT-4o-mini (OpenAI)\n"
-            "🎁 Pollinations (رایگان)\n"
-            "→ <b>سریع‌ترین جواب برنده است!</b> 🏁\n\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "🚀 <b>چرا جیزس خاصه؟</b>\n"
-            "⚡ پاسخ موازی از ۴ مدل → سرعت خیره‌کننده\n"
-            "🌐 جستجوی زنده وب (بدون کش، همیشه تازه)\n"
-            "💎 نرخ واقعی بازار آزاد ایران (TGJU)\n"
-            "🖼 عکس از منابع متن‌باز (Wikipedia)\n"
-            "🧠 حافظه چت (۱۰ پیام آخر)\n"
-            "💬 لحن گرم، دوستانه و طبیعی\n"
-            "🔗 ذکر منبع واقعی (بدون لینک جعلی)\n"
-            "🛡 امن و پایدار (retry + fallback)\n\n"
             "💡 <b>نکته:</b> هرچه سؤالت واضح‌تر باشه، جواب دقیق‌تره!\n\n"
             "👇 روی هر دستور کلیک کن تا کپی شه و بفرست."
         )

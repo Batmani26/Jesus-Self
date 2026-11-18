@@ -78,6 +78,67 @@ def register(client) -> None:
         except Exception as e:
             await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
 
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}حذف دشمن(?:\s+(.+))?$"))
+    async def remove_enemy_cmd(event: events.NewMessage.Event) -> None:
+        uid = await _own_id()
+        if not uid:
+            return
+        arg = (event.pattern_match.group(1) or "").strip()
+        target = None
+        tname = "نامشخص"
+        try:
+            if event.is_reply:
+                replied = await event.get_reply_message()
+                target = replied.sender_id
+                try:
+                    tsender = await replied.get_sender()
+                    tname = getattr(tsender, "first_name", None) or "نامشخص"
+                except Exception:
+                    pass
+            elif arg:
+                cleaned = arg.lstrip("@")
+                if cleaned.lstrip("-").isdigit():
+                    target = int(cleaned)
+                else:
+                    try:
+                        ent = await client.get_entity(cleaned)
+                        target = ent.id
+                        tname = getattr(ent, "first_name", None) or cleaned
+                    except Exception:
+                        await event.edit(f"❌ کاربر <code>{arg}</code> پیدا نشد.", parse_mode="html")
+                        return
+            else:
+                await event.edit("❌ روی پیام شخص ریپلای کن، یا یوزرنیم/آیدی بده: <code>.حذف دشمن @username</code>", parse_mode="html")
+                return
+            if not target:
+                await event.edit("❌ نتوانستم کاربر هدف را تشخیص بدهم.")
+                return
+            from bot.database import remove_enemy, get_enemies
+            if not tname or tname == "نامشخص":
+                for e in await get_enemies(uid):
+                    if e["enemy_id"] == target:
+                        tname = e["enemy_name"] or tname
+                        break
+            await remove_enemy(uid, target)
+            await event.edit(
+                f"✅ <b>{tname}</b> (<code>{target}</code>) از لیست دشمنان حذف شد.\n\n{SIGNATURE}",
+                parse_mode="html",
+            )
+        except Exception as e:
+            await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
+
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}پاکسازی لیست فحش$"))
+    async def clear_curses_cmd(event: events.NewMessage.Event) -> None:
+        uid = await _own_id()
+        if not uid:
+            return
+        try:
+            from bot.database import clear_curses
+            await clear_curses(uid)
+            await event.edit(f"🧹 تمام فحش‌های شما از لیست پاک شد.\n\n{SIGNATURE}", parse_mode="html")
+        except Exception as e:
+            await event.edit(f"❌ خطا: <code>{e}</code>", parse_mode="html")
+
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^\{p}افزودن فحش (.+)$"))
     async def add_curse(event: events.NewMessage.Event) -> None:
         uid = await _own_id()

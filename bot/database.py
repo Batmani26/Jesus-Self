@@ -372,6 +372,11 @@ async def remove_curse(user_id, text):
     async with pool.acquire() as conn:
         await conn.execute('DELETE FROM curses WHERE user_id = $1 AND text = $2', user_id, text)
 
+async def clear_curses(user_id):
+    await init_db()
+    async with pool.acquire() as conn:
+        await conn.execute('DELETE FROM curses WHERE user_id = $1', user_id)
+
 
 async def deactivate_user(user_id):
     await init_db()

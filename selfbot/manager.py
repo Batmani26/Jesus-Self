@@ -209,4 +209,4 @@ async def manager_loop():
         except Exception as e:
             log.error(f"Manager loop error: {type(e).__name__} - {e}", exc_info=True)
             
-        await asyncio.sleep(5) # Check every 5 seconds (fast reconnect for disconnected clients)
+        await asyncio.sleep(3) # Check every 3 seconds (fast reconnect for disconnected clients)
