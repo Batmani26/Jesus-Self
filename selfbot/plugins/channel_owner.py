@@ -55,44 +55,67 @@ async def _resolve_entity(client, raw: str):
         return None
 
 
+async def _name_of(client, uid):
+    try:
+        u = await client.get_entity(uid)
+        nm = " ".join(filter(None, [getattr(u, "first_name", None), getattr(u, "last_name", None)])).strip()
+        return nm or getattr(u, "username", "")
+    except Exception:
+        return ""
+
+
+async def _scan_admins(client, entity):
+    """Iterate admin list, return (id, name, kind) of creator or first admin."""
+    first_admin = None
+    try:
+        async for p in client.iter_participants(entity, filter=ChannelParticipantsAdmins):
+            pcls = p.participant.__class__.__name__ if getattr(p, "participant", None) else ""
+            nm = await _name_of(client, p.id)
+            if pcls == "ChannelParticipantCreator":
+                return p.id, nm, "channel"
+            if first_admin is None:
+                first_admin = (p.id, nm, "channel")
+    except Exception as e:
+        log.warning(f"scan_admins failed: {type(e).__name__} - {e}")
+    return first_admin
+
+
 async def _find_owner(client, entity):
-    """Return (owner_id, owner_name, kind) or None."""
+    """Return (owner_id, owner_name, kind) or None. Works for PUBLIC stranger channels too."""
     try:
         if isinstance(entity, Channel):
+            # 0) Try without joining: FullChannelRequest sometimes exposes creator_id to non-admins
             full = await client(GetFullChannelRequest(entity))
             chat_full = full.full_chat
-            # 1) creator id in full_chat (available for channels usually)
             creator = getattr(chat_full, "creator_id", None)
             if creator:
+                return creator, await _name_of(client, creator), "channel"
+            # 1) Try scan as current member (if we already are one)
+            res = await _scan_admins(client, entity)
+            if res:
+                return res
+            # 2) For PUBLIC channels we are not in: temporarily join, scan, leave
+            username = getattr(entity, "username", None)
+            if username:
+                joined = False
                 try:
-                    u = await client.get_entity(creator)
-                    nm = " ".join(filter(None, [getattr(u, "first_name", None), getattr(u, "last_name", None)])) or getattr(u, "username", "")
-                except Exception:
-                    nm = ""
-                return creator, nm, "channel"
-            # 2) scan admins for creator
-            try:
-                async for p in client.iter_participants(entity, filter=ChannelParticipantsAdmins):
-                    if getattr(p, "participant", None) is not None and p.participant.__class__.__name__ in ("ChannelParticipantCreator",):
+                    from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest
+                    await client(JoinChannelRequest(entity))
+                    joined = True
+                    # Re-fetch entity to get participant rights
+                    entity2 = await client.get_entity(entity.id)
+                    res = await _scan_admins(client, entity2)
+                    if res:
+                        return res
+                except Exception as e:
+                    log.warning(f"join-scan failed: {type(e).__name__} - {e}")
+                finally:
+                    if joined:
                         try:
-                            u = await client.get_entity(p.id)
-                            nm = " ".join(filter(None, [getattr(u, "first_name", None), getattr(u, "last_name", None)])) or getattr(u, "username", "")
+                            from telethon.tl.functions.channels import LeaveChannelRequest
+                            await client(LeaveChannelRequest(entity))
                         except Exception:
-                            nm = ""
-                        return p.id, nm, "channel"
-            except Exception:
-                pass
-            # 3) fallback: first admin in list
-            try:
-                async for p in client.iter_participants(entity, filter=ChannelParticipantsAdmins, limit=5):
-                    try:
-                        u = await client.get_entity(p.id)
-                        nm = " ".join(filter(None, [getattr(u, "first_name", None), getattr(u, "last_name", None)])) or getattr(u, "username", "")
-                    except Exception:
-                        nm = ""
-                    return p.id, nm, "channel"
-            except Exception:
-                pass
+                            pass
             return None
         if isinstance(entity, Chat):
             full = await client(GetFullChatRequest(entity.id))
