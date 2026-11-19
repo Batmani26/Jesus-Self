@@ -55,7 +55,7 @@ def register(client) -> None:
         )
 
         async def _flush(buf):
-            """Delete up to 100 msgs with FloodWait retry. Returns count."""
+            """Delete up to 100 msgs with FloodWait retry. Returns count. Skips status_msg."""
             if not buf:
                 return 0
             for attempt in range(3):
@@ -77,63 +77,71 @@ def register(client) -> None:
 
         total = 0
         buffer = []
+        skip_ids = {status_msg.id, getattr(event.message, "id", None)}
         try:
-            # Resolve entity (avoids iter_messages issues with bare chat_id on some versions)
+            # Use the ACTUAL entity from the event to preserve access_hash (bare chat_id can
+            # cause GetReplies to return empty in some Telethon versions).
             try:
-                entity = await client.get_entity(chat_id)
+                entity = await event.get_chat()
             except Exception:
-                entity = chat_id
+                try:
+                    entity = await client.get_entity(chat_id)
+                except Exception:
+                    entity = chat_id
+            log.info(f"[WIPE] entity type={type(entity).__name__} id={getattr(entity, 'id', '?')}")
 
-            # Build a message iterator:
-            # - Sub-topic: use RAW messages.GetReplies(peer, msg_id=topic_id) which reliably
-            #   returns EVERY message of that topic regardless of Telethon version.
-            # - General: iterate top-level (no reply_to) and filter out subtopic messages.
+            from telethon.tl.functions.messages import GetRepliesRequest
+
+            async def _iterator_replies(peer, tid):
+                offset_id = 0
+                yielded = 0
+                while True:
+                    try:
+                        res = await client(GetRepliesRequest(
+                            peer=peer, msg_id=tid, offset_id=offset_id,
+                            offset_date=None, add_offset=0, limit=100,
+                            max_id=0, min_id=0, hash=0,
+                        ))
+                    except Exception as exc:
+                        emsg = str(exc).lower()
+                        if "flood" in emsg or "wait" in emsg:
+                            import re as _r
+                            mm = _r.search(r"(\d+)", str(exc))
+                            await asyncio.sleep((int(mm.group(1)) if mm else 15) + 2)
+                            continue
+                        log.warning(f"GetReplies failed (msg_id={tid}): {exc}")
+                        break
+                    msgs = getattr(res, "messages", []) or []
+                    log.info(f"[WIPE] GetReplies(msg_id={tid}) returned {len(msgs)} (offset={offset_id})")
+                    if not msgs:
+                        break
+                    for m in msgs:
+                        mid = getattr(m, "id", None)
+                        if mid and mid not in skip_ids:
+                            yield m
+                            yielded += 1
+                    offset_id = msgs[-1].id
+                    if len(msgs) < 100:
+                        break
+                    await asyncio.sleep(0.1)
+                log.info(f"[WIPE] topic iter yielded {yielded}")
+
             if is_general:
                 async def _iterator():
                     async for m in client.iter_messages(entity, reverse=False):
                         r = getattr(m, "reply_to", None)
                         if r is not None and getattr(r, "forum_topic", False):
                             continue
+                        if getattr(m, "id", None) in skip_ids:
+                            continue
                         yield m
                 it = _iterator()
             else:
-                from telethon.tl.functions.messages import GetRepliesRequest
-                async def _iterator_replies():
-                    offset_id = 0
-                    while True:
-                        try:
-                            res = await client(GetRepliesRequest(
-                                peer=entity,
-                                msg_id=topic_id,
-                                offset_id=offset_id,
-                                offset_date=None,
-                                add_offset=0,
-                                limit=100,
-                                max_id=0,
-                                min_id=0,
-                                hash=0,
-                            ))
-                        except Exception as exc:
-                            emsg = str(exc).lower()
-                            if "flood" in emsg or "wait" in emsg:
-                                import re as _r
-                                mm = _r.search(r"(\d+)", str(exc))
-                                await asyncio.sleep((int(mm.group(1)) if mm else 15) + 2)
-                                continue
-                            log.warning(f"GetReplies failed: {exc}")
-                            break
-                        msgs = getattr(res, "messages", []) or []
-                        if not msgs:
-                            break
-                        for m in msgs:
-                            # Skip service messages that have no id
-                            if getattr(m, "id", None):
-                                yield m
-                        offset_id = msgs[-1].id
-                        if len(msgs) < 100:
-                            break
-                        await asyncio.sleep(0.1)
-                it = _iterator_replies()
+                # Try GetReplies on the chat entity; if 0, retry on a re-fetched full entity.
+                async def _try_replies():
+                    async for m in _iterator_replies(entity, topic_id):
+                        yield m
+                it = _try_replies()
 
             async for msg in it:
                 buffer.append(msg.id)
@@ -144,6 +152,50 @@ def register(client) -> None:
             if buffer:
                 total += await _flush(buffer)
                 buffer = []
+
+            # Fallback: if GetReplies gave 0 messages, try a direct IterMessages(reply_to=topic_id)
+            if total == 0 and not is_general:
+                log.info("[WIPE] fallback: iter_messages(reply_to=topic_id)")
+                try:
+                    async for msg in client.iter_messages(entity, reply_to=topic_id, limit=None):
+                        mid = getattr(msg, "id", None)
+                        if not mid or mid in skip_ids:
+                            continue
+                        buffer.append(mid)
+                        if len(buffer) >= 100:
+                            total += await _flush(buffer)
+                            buffer = []
+                            await asyncio.sleep(0.15)
+                    if buffer:
+                        total += await _flush(buffer)
+                        buffer = []
+                except Exception as e2:
+                    log.warning(f"[WIPE] fallback iter failed: {e2}")
+
+            # Fallback 2: if still 0, scan all messages and filter by reply_to_top_id == topic_id
+            if total == 0 and not is_general:
+                log.info("[WIPE] fallback2: scan all + filter by reply_to_top_id")
+                try:
+                    async for msg in client.iter_messages(entity, limit=None):
+                        r = getattr(msg, "reply_to", None)
+                        if r is None:
+                            continue
+                        mt = getattr(r, "reply_to_top_id", None) or (getattr(r, "reply_to_msg_id", None) if getattr(r, "forum_topic", False) else None)
+                        if mt != topic_id:
+                            continue
+                        mid = getattr(msg, "id", None)
+                        if not mid or mid in skip_ids:
+                            continue
+                        buffer.append(mid)
+                        if len(buffer) >= 100:
+                            total += await _flush(buffer)
+                            buffer = []
+                            await asyncio.sleep(0.15)
+                    if buffer:
+                        total += await _flush(buffer)
+                        buffer = []
+                except Exception as e3:
+                    log.warning(f"[WIPE] fallback2 failed: {e3}")
         except Exception as e:
             log.warning(f"topic wipe error: {e}")
 
