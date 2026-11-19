@@ -23,6 +23,86 @@ def register(client) -> None:
                 pass
         return _me["id"]
 
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{ep}پاکسازی تاپیک$"))
+    async def cmd_wipe_topic(event: events.NewMessage.Event) -> None:
+        chat_id = event.chat_id
+        # Detect current topic (must be a forum topic)
+        topic_id = None
+        rt = getattr(event.message, "reply_to", None)
+        if rt is not None and getattr(rt, "forum_topic", False):
+            topic_id = getattr(rt, "reply_to_top_id", None) or getattr(rt, "reply_to_msg_id", None)
+        try:
+            await event.delete()
+        except Exception:
+            pass
+        if not topic_id:
+            await client.send_message(
+                chat_id,
+                f"❌ این دستور فقط داخل یک تاپیک (نه تاپیک اصلی) کار می‌کند. داخل تاپیک موردنظر بزن <code>{p}پاکسازی تاپیک</code>",
+                parse_mode="html",
+            )
+            return
+
+        await client.send_message(
+            chat_id,
+            f"🧹 در حال پاکسازی کامل تاپیک... این ممکن است چند دقیقه طول بکشد.\n\n{SIG}",
+            reply_to=topic_id,
+        )
+
+        total = 0
+        buffer = []
+        try:
+            async for msg in client.iter_messages(chat_id):
+                r = getattr(msg, "reply_to", None)
+                if r is None:
+                    continue
+                mtopic = getattr(r, "reply_to_top_id", None)
+                if mtopic is None and getattr(r, "forum_topic", False):
+                    mtopic = getattr(r, "reply_to_msg_id", None)
+                if mtopic != topic_id:
+                    continue
+                buffer.append(msg.id)
+                if len(buffer) >= 100:
+                    try:
+                        await client.delete_messages(chat_id, buffer, revoke=True)
+                        total += len(buffer)
+                    except Exception as exc:
+                        # FloodWait handling
+                        emsg = str(exc).lower()
+                        if "flood" in emsg or "wait" in emsg or "too many" in emsg:
+                            import re as _r
+                            mm = _r.search(r"(\d+)", str(exc))
+                            wait = int(mm.group(1)) + 2 if mm else 15
+                            log.warning(f"flood wait {wait}s during topic wipe")
+                            await asyncio.sleep(wait)
+                            try:
+                                await client.delete_messages(chat_id, buffer, revoke=True)
+                                total += len(buffer)
+                            except Exception as e2:
+                                log.warning(f"retry delete failed: {e2}")
+                        else:
+                            log.warning(f"topic wipe chunk failed: {exc}")
+                    buffer = []
+                    await asyncio.sleep(0.2)
+            if buffer:
+                try:
+                    await client.delete_messages(chat_id, buffer, revoke=True)
+                    total += len(buffer)
+                except Exception as exc:
+                    log.warning(f"final chunk failed: {exc}")
+        except Exception as e:
+            log.warning(f"topic wipe error: {e}")
+
+        # Delete the start message we sent too
+        try:
+            await client.send_message(
+                chat_id,
+                f"✅ <b>پاکسازی تاپیک با موفقیت انجام شد</b> ({total} پیام)\n\n{SIG}",
+                parse_mode="html",
+            )
+        except Exception:
+            pass
+
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^{ep}حذف(?:\s+(\d+))?$"))
     async def cmd_delete(event: events.NewMessage.Event) -> None:
         m = event.pattern_match
