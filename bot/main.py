@@ -36,7 +36,29 @@ if _tg_proxy:
     logging.info(f"Management bot using proxy: {_tg_proxy}")
 else:
     bot = Bot(token=BOT_TOKEN)
+
 dp = Dispatcher()
+
+
+async def _edit_panel(callback, text, kb=None, parse_mode="HTML"):
+    """Edit an inline-query panel message safely. Inline messages MUST use inline_message_id."""
+    try:
+        if getattr(callback, "inline_message_id", None):
+            await callback.bot.edit_message_text(
+                inline_message_id=callback.inline_message_id,
+                text=text, reply_markup=kb, parse_mode=parse_mode,
+            )
+            return
+        if callback.message:
+            await callback.message.edit_text(text, reply_markup=kb, parse_mode=parse_mode)
+            return
+        raise RuntimeError("no message reference available")
+    except Exception as e:
+        msg = str(e).lower()
+        if "message is not modified" in msg:
+            return
+        raise
+
 
 # آیدی عددی ادمین (خودت) رو اینجا بذار تا پیام لاگین رو برات بفرسته
 # برای پیدا کردن آیدی خودت میتونی از ربات @userinfobot استفاده کنی
@@ -200,10 +222,7 @@ async def refresh_inline_panel(callback: CallbackQuery):
         [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
     ])
     try:
-        if callback.message:
-            await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-        else:
-            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="Markdown")
+        await _edit_panel(callback, text, kb, parse_mode="Markdown")
         await callback.answer("✅ پنل بروزرسانی شد!")
     except Exception as e:
         if "message is not modified" in str(e).lower():
@@ -227,9 +246,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         ])
         try:
             if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+                await callback.message.edit_text(info_text, reply_markup=kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -247,10 +264,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_cheat")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -268,10 +282,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_cheat")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -289,10 +300,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_cheat")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -315,10 +323,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_cheat")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -335,10 +340,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(games_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=games_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, games_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -356,10 +358,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_games")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(meowie_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=meowie_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, meowie_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -401,10 +400,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         info_text = build_fishing_text(target_text, status_text, interval_display, modes)
         kb = build_fishing_keyboard(modes)
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -434,10 +430,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         info_text = build_fishing_text(target_text, status_text, interval_display, modes)
         kb = build_fishing_keyboard(modes)
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -481,10 +474,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_meowie_info")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -522,10 +512,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_meowie_info")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -543,10 +530,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(tools_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=tools_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, tools_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -575,59 +559,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
-            await callback.answer(("✅ روشن شد" if on else "❌ خاموش شد") if data_str == "tog_calc" else None)
-        except Exception as e:
-            await callback.answer(f"خطا: {e}", show_alert=True)
-        return
-
-    if data_str == "tool_enemies_info" or data_str.startswith("enemy_del:"):
-        from bot.database import get_enemies, remove_enemy
-        if data_str.startswith("enemy_del:"):
-            try:
-                eid = int(data_str.split(":", 1)[1])
-                await remove_enemy(callback.from_user.id, eid)
-                await callback.answer("✅ دشمن از لیست حذف شد")
-            except Exception as exc:
-                await callback.answer(f"خطا: {exc}", show_alert=True)
-        try:
-            enemies = await get_enemies(callback.from_user.id)
-        except Exception:
-            enemies = []
-        lines = [
-            "☠️ <b>بخش دشمنان</b>",
-            "",
-            "<blockquote>هر شخصی که به لیست دشمنان شما اضافه شود، سلف‌بات با دیدن هر پیام او در پیوی یا گروه، یک فحش از لیست فحش‌های شما به او می‌دهد.</blockquote>",
-            "",
-            "<b>📖 آموزش:</b>",
-            "1️⃣ روی پیام شخص ریپلای کنید و بزنید: <code>.تنظیم دشمن</code>",
-            "💡 یا بدون ریپلای، یوزرنیم/آیدی عددی بدهید: <code>.تنظیم دشمن @username</code> (شخص متوجه نمی‌شود)",
-            "2️⃣ فحش‌های دلخواه خود را اضافه کنید: <code>.افزودن فحش [متن]</code>",
-            "3️⃣ باقی‌اش را به ما بسپارید.",
-            "",
-        ]
-        if enemies:
-            lines.append(f"<b>👥 لیست دشمنان شما ({len(enemies)}):</b>")
-        else:
-            lines.append("<b>👥 لیست دشمنان شما:</b> هنوز خالی است.")
-        kb_rows = []
-        # Curse-list button ALWAYS at the very top
-        kb_rows.append([InlineKeyboardButton(text="📜 فحش‌های من", callback_data="curse_list")])
-        for e in enemies[:30]:
-            nm = e["enemy_name"] or "نامشخص"
-            kb_rows.append([InlineKeyboardButton(text=f"🗑 {nm} ({e['enemy_id']})", callback_data=f"enemy_del:{e['enemy_id']}")])
-        kb_rows.append([InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="tool_enemies_info")])
-        kb_rows.append([InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")])
-        kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
-        info_text = "\n".join(lines)
-        try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -650,10 +582,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         ])
         info_text = "\n".join(lines)
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -676,10 +605,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -703,55 +629,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
-            await callback.answer(f"{'✅ روشن شد' if TRANS_ENABLED['on'] else '❌ خاموش شد'}")
-        except Exception:
-            await callback.answer()
-        return
-
-    if data_str == "cat_manage":
-        from bot.database import get_setting as _gs
-        _lp = await _gs(callback.from_user.id, "lock_pv", 0)
-        _so = await _gs(callback.from_user.id, "secretary_on", 0)
-        _stx = await _gs(callback.from_user.id, "secretary_text") or "تنظیم نشده"
-        _lp_s = "🟢 فعال" if _lp else "🔴 غیرفعال"
-        _so_s = "🟢 روشن" if _so else "🔴 خاموش"
-        info_text = (
-            "⚙️ <b>بخش مدیریت</b>\n\n"
-            f"📊 <b>وضعیت فعلی:</b> قفل پیوی: {_lp_s} | منشی: {_so_s}\n"
-            f"<blockquote>متن فعلی منشی: {_stx}</blockquote>\n\n"
-            "<b>📖 آموزش دستورات:</b>\n\n"
-            "🗑 <b>حذف پیام</b>\n"
-            "<blockquote>روی پیام مورد نظر ریپلای کن و <code>.حذف</code> بزن؛ پیام برای هر دو طرف پاک می‌شود.\n"
-            "برای پاک کردن تعداد بالا: <code>.حذف 100</code> (بین 1 تا 100). در گروه تاپیک‌دار فقط پیام‌های همان تاپیک پاک می‌شوند و باید ادمین با دسترسی حذف باشی.</blockquote>\n\n"
-            "🧹 <b>پاکسازی تاپیک</b>\n"
-            "<blockquote>داخل هر تاپیکی (از جمله تاپیک اصلی/General) بزن <code>.پاکسازی تاپیک</code> تا تمام پیام‌های همان تاپیک از اول تا آخر (بدون محدودیت تعداد) پاک شوند. تاپیک‌های دیگر دست‌نخورده می‌مانند.</blockquote>\n\n"
-            "🔇 <b>سکوت / حذف سکوت</b>\n"
-            "<blockquote>سکوت: روی پیام کاربر ریپلای کن و <code>.سکوت</code> بزن؛ از این به بعد هر پیام او فوراً حذف می‌شود (بدون بلاک).\n"
-            "حذف سکوت: روی پیام همان کاربر ریپلای کن و <code>.حذف سکوت</code> بزن تا از لیست سکوت خارج شود.</blockquote>\n\n"
-            "🔒 <b>قفل پیوی</b>\n"
-            "<blockquote>قفل: <code>.قفل پیوی</code> — وضعیت را روشن/خاموش می‌کند.\n"
-            "باز کردن: <code>.بازکردن قفل پیوی</code> — قفل را قطعاً غیرفعال می‌کند.\n"
-            "وقتی فعال باشد، هر پیام ورودی در پیوی فوراً حذف می‌شود.</blockquote>\n\n"
-            "🤖 <b>منشی</b>\n"
-            "<blockquote>اول متن را تنظیم کن: <code>.تنظیم متن منشی [متن]</code>\n"
-            "بعد روشن/خاموش: <code>.منشی روشن</code> / <code>.منشی خاموش</code>\n"
-            "وقتی روشن باشد، سلف در پیوی به پیام‌های جدید به‌صورت خودکار پاسخ می‌دهد.</blockquote>\n\n"
-            "💥 <b>اسپم</b>\n"
-            "<blockquote><code>.اسپم متن 50</code> — متن را ۵۰ بار (بین 1 تا 100) در همین چت می‌فرستد و در پایان اعلام می‌کند.</blockquote>\n\n"
-            "👇 روی هر دستور کلیک کن تا کپی شود."
-        )
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
-        ])
-        try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -784,10 +662,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -808,10 +683,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="Markdown")
+            await _edit_panel(callback, text, kb, parse_mode="Markdown")
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -858,9 +730,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         ])
         try:
             if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
+                await callback.message.edit_text(info_text, reply_markup=kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -903,8 +773,6 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         try:
             if callback.message:
                 await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=info_text, reply_markup=kb, parse_mode="HTML")
             await callback.answer("✅ ذخیره شد" if data_str != "tool_guardian_info" else None)
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -926,8 +794,6 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         try:
             if callback.message:
                 await callback.message.edit_text(cheat_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=cheat_text, reply_markup=kb, parse_mode="HTML")
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -947,8 +813,6 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         try:
             if callback.message:
                 await callback.message.edit_text(guide_text, reply_markup=kb, parse_mode="HTML")
-            else:
-                await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=guide_text, reply_markup=kb, parse_mode="HTML")
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -1010,8 +874,6 @@ async def cb_back_to_panel(callback: CallbackQuery):
     try:
         if callback.message:
             await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-        else:
-            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="Markdown")
         await callback.answer("✅ به پنل اصلی بازگشتید.")
     except Exception as e:
         await callback.answer(f"خطا: {e}", show_alert=True)
@@ -1046,8 +908,6 @@ async def cb_back_to_panel(callback: CallbackQuery):
     try:
         if callback.message:
             await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-        else:
-            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="Markdown")
         await callback.answer()
     except Exception as e:
         await callback.answer(f"خطا: {e}", show_alert=True)
@@ -1316,8 +1176,6 @@ async def cb_refresh_manage(callback: CallbackQuery):
     try:
         if callback.message:
             await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-        else:
-            await callback.bot.edit_message_text(inline_message_id=callback.inline_message_id, text=text, reply_markup=kb, parse_mode="HTML")
         await callback.answer("✅ بروزرسانی شد!")
     except Exception as e:
         if "message is not modified" in str(e).lower():
@@ -1397,14 +1255,7 @@ async def cb_game(message: Message):
     ])
     await message.answer("🎮 **بخش بازی‌ها**\n\nیک بازی رو انتخاب کن:", reply_markup=game_keyboard, parse_mode="Markdown")
 
-@dp.callback_query(F.data.startswith("game_"))
-async def process_game(callback: CallbackQuery):
-    game_type = callback.data.split("_")[1]
-    if game_type == "mew":
-        await callback.message.answer("🐱 بخش های متفاوت میویی را میتوانید با دستور .پنل کنترل کنید")
-    elif game_type == "khamenei":
-        await callback.message.answer("🇮🇷 رهبر انقلاب، حضرت آیت‌الله خامنه‌ای.")
-    await callback.answer()
+# (duplicate game_ handler removed - the one at line 1400 is the active one)
 
 @dp.message(F.text == "🚀 قابلیت‌ها")
 async def cb_features(message: Message):

@@ -18,7 +18,8 @@ async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None):
     except Exception:
         return
     loop = asyncio.get_event_loop()
-    next_send = loop.time()  # send immediately, then wait cooldown
+    # Respect the user's chosen interval from the very first send
+    next_send = loop.time() + cooldown
     while True:
         try:
             if user_id is None:

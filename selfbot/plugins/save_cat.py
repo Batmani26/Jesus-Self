@@ -11,14 +11,26 @@ _RESCUE_KEYWORDS = (chr(1606)+chr(1580)+chr(1575)+chr(1578), chr(82)+chr(101)+ch
 
 
 def _has_rescue(msg):
-    markup = getattr(msg, chr(114)+chr(101)+chr(112)+chr(108)+chr(121)+chr(95)+chr(109)+chr(97)+chr(114)+chr(107)+chr(117)+chr(112), None)
+    markup = getattr(msg, "reply_markup", None)
     if not markup:
         return False
     for row in markup.rows:
         for button in row.buttons:
-            text = getattr(button, chr(116)+chr(101)+chr(120)+chr(116), chr(39)+chr(39)) or chr(39)+chr(39)
+            text = getattr(button, "text", "") or ""
             if any(k in text for k in _RESCUE_KEYWORDS):
                 return True
+    # Broader: if the message text looks like a Meowie cat notice and has any non-close button,
+    # assume the rescue button is present (Meowie only shows it right after a cat appears).
+    try:
+        body = (getattr(msg, "text", "") or getattr(msg, "raw_text", "") or "")
+        if ("پیشی" in body) or ("گربه" in body) or ("cat" in body.lower()) or ("Meow" in body):
+            for row in markup.rows:
+                for button in row.buttons:
+                    t = (getattr(button, "text", "") or "").strip()
+                    if t and "بستن" not in t and "close" not in t.lower() and "انصراف" not in t:
+                        return True
+    except Exception:
+        pass
     return False
 
 
@@ -38,41 +50,52 @@ async def _try_rescue(client, chat_id, msg):
             if not current or not getattr(current, "reply_markup", None):
                 await asyncio.sleep(0.5)
                 continue
+            buttons = [b for row in current.reply_markup.rows for b in row.buttons]
+            labels = [getattr(b, "text", "") or "" for b in buttons]
+            print(f"[SAVE CAT] buttons available: {labels}")
             target = None
-            for row in current.reply_markup.rows:
-                for button in row.buttons:
-                    text = getattr(button, "text", "") or ""
-                    cb = getattr(button, "data", b"") or b""
-                    try:
-                        cb_str = cb.decode() if isinstance(cb, bytes) else str(cb)
-                    except Exception:
-                        cb_str = ""
-                    if any(k in text for k in _RESCUE_KEYWORDS) or "rescue" in cb_str.lower() or "نجات" in cb_str:
-                        target = button
-                        break
-                if target:
+            # 1) keyword match
+            for b in buttons:
+                t = getattr(b, "text", "") or ""
+                if any(k in t for k in _RESCUE_KEYWORDS):
+                    target = b
                     break
-            if not target:
+            # 2) fallback: first visible non-close button
+            if target is None:
+                for b in buttons:
+                    t = (getattr(b, "text", "") or "").strip()
+                    if t and "بستن" not in t and "close" not in t.lower() and "انصراف" not in t:
+                        target = b
+                        break
+            if target is None:
+                print("[SAVE CAT] no usable button")
                 break
+            clicked_ok = False
+            # Try button.click() first (it knows URL vs callback and correct msg)
             try:
-                from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
+                await target.click()
+                clicked_ok = True
+            except Exception as exc:
+                print(f"[SAVE CAT] button.click() failed: {type(exc).__name__}: {exc}")
+            # Fallback: raw callback answer
+            if not clicked_ok:
                 cb_data = getattr(target, "data", None)
-                if cb_data is not None:
-                    await client(GetBotCallbackAnswerRequest(
-                        peer=chat_id, msg_id=current.id, data=cb_data,
-                    ))
-                else:
-                    await target.click()
+                if cb_data:
+                    try:
+                        from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
+                        await client(GetBotCallbackAnswerRequest(peer=chat_id, msg_id=current.id, data=cb_data))
+                        clicked_ok = True
+                    except Exception as exc:
+                        print(f"[SAVE CAT] callback answer failed: {type(exc).__name__}: {exc}")
+            if clicked_ok:
                 _CLICKED.add(key)
-                print(f"[SAVE CAT] clicked rescue in {chat_id} (try {attempt+1})")
+                print(f"[SAVE CAT] click OK on '{getattr(target, 'text', '?')}' in {chat_id} (try {attempt+1})")
                 if SAVE_CAT_STATUS.get("announce"):
                     try:
                         await client.send_message("me", f"🐈 **پیشی نجات پیدا کرد!**\n\n📍 چت: <code>{chat_id}</code>")
                     except Exception as exc:
                         print(f"[SAVE CAT] announce error: {exc}")
                 break
-            except Exception as exc:
-                print(f"[SAVE CAT] click error: {exc}")
             await asyncio.sleep(0.3)
     finally:
         _INFLIGHT.discard(key)
@@ -175,7 +198,11 @@ def register(client) -> None:
 
     @client.on(events.NewMessage(incoming=True))
     async def on_cat_message(event: events.NewMessage.Event) -> None:
-        if not (SAVE_CAT_STATUS[chr(97)+chr(99)+chr(116)+chr(105)+chr(118)+chr(101)] or SAVE_CAT_STATUS[chr(115)+chr(99)+chr(97)+chr(110)+chr(110)+chr(105)+chr(110)+chr(103)]):
+        if not (SAVE_CAT_STATUS.get("active") or SAVE_CAT_STATUS.get("scanning")):
             return
-        if _has_rescue(event.message):
-            await _try_rescue(client, event.chat_id, event.message)
+        try:
+            if _has_rescue(event.message):
+                print(f"[SAVE CAT] rescue detected in {event.chat_id} msg_id={event.message.id}")
+                await _try_rescue(client, event.chat_id, event.message)
+        except Exception as exc:
+            print(f"[SAVE CAT] handler error: {exc}")

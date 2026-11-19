@@ -69,25 +69,22 @@ def _pick_button(markup, mode):
 
 
 async def _click_button(client, peer, msg_id, button):
-    """Click robustly: try button.click() (handles URL+callback+correct msg ref) first,
-    then fall back to raw GetBotCallbackAnswerRequest for callback buttons only."""
-    # 1) Primary: button.click() — knows the correct message + button type
+    """Click robustly. Prefer raw callback (works with selfbots) then button.click()."""
+    data = getattr(button, "data", None)
+    if data:
+        try:
+            from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
+            await client(GetBotCallbackAnswerRequest(peer=peer, msg_id=msg_id, data=data))
+            return True
+        except Exception as e:
+            print(f"[FISH] callback request failed: {type(e).__name__}: {e}")
+    # Fallback: click() handles URL buttons and newer refs
     try:
         await button.click()
         return True
     except Exception as e:
         print(f"[FISH] button.click() failed: {type(e).__name__}: {e}")
-    # 2) Fallback: raw callback request (only if data is a non-empty bytes/str)
-    data = getattr(button, "data", None)
-    if not data:
-        return False
-    try:
-        from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
-        await client(GetBotCallbackAnswerRequest(peer=peer, msg_id=msg_id, data=data))
-        return True
-    except Exception as e:
-        print(f"[FISH] GetBotCallbackAnswer failed: {type(e).__name__}: {e}")
-        return False
+    return False
 
 
 async def handle_catch(client, chat_id, sent_msg_id, modes, timeout=40):
