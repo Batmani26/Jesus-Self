@@ -17,28 +17,37 @@ _PERSIAN = re.compile(r"[\u0600-\u06FF]")
 
 
 async def _gtranslate(text: str, target_lang: str) -> str:
-    """Free Google Translate web endpoint — no API key required."""
+    """Free Google Translate web endpoint — no API key required. Tries 3 hosts with retry."""
     q = urllib.parse.quote(text)
-    url = (
-        "https://translate.googleapis.com/translate_a/single"
-        f"?client=gtx&sl=auto&tl={target_lang}&dt=t&q={q}"
-    )
     timeout = aiohttp.ClientTimeout(total=15)
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as s:
-            async with s.get(url) as r:
-                if r.status != 200:
-                    return ""
-                data = await r.json(content_type=None)
-                # Format: [[[translated, original, ...], ...], ...]
-                out = []
-                for chunk in data[0] or []:
-                    if chunk and chunk[0]:
-                        out.append(chunk[0])
-                return "".join(out).strip()
-    except Exception:
-        return ""
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    hosts = [
+        "translate.googleapis.com",
+        "translate.google.com",
+        "clients5.google.com",
+    ]
+    for host in hosts:
+        url = (
+            f"https://{host}/translate_a/single"
+            f"?client=gtx&sl=auto&tl={target_lang}&dt=t&q={q}"
+        )
+        for attempt in range(2):
+            try:
+                async with aiohttp.ClientSession(timeout=timeout, headers=headers) as s:
+                    async with s.get(url) as r:
+                        if r.status != 200:
+                            continue
+                        data = await r.json(content_type=None)
+                        out = []
+                        for chunk in data[0] or []:
+                            if chunk and chunk[0]:
+                                out.append(chunk[0])
+                        res = "".join(out).strip()
+                        if res:
+                            return res
+            except Exception:
+                pass
+    return ""
 
 
 async def _mymemory(text: str, target_lang: str) -> str:

@@ -152,7 +152,7 @@ def register(client) -> None:
             await set_save_cat_active(me.id, 0)
             await event.edit("❌ **نجات پیشی خاموش شد.**")
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}اعلان نجات\s*(روشن|خاموش)$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}(?:اعلان|اعلام) نجات\s*(روشن|خاموش)$"))
     async def toggle_announce(event: events.NewMessage.Event) -> None:
         me = await client.get_me()
         from bot.database import set_save_cat_announce

@@ -245,8 +245,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_cheat")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb)
+            await _edit_panel(callback, info_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -635,6 +634,56 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             await callback.answer(f"خطا: {e}", show_alert=True)
         return
 
+    if data_str == "cat_manage":
+        from bot.database import get_setting as _gs
+        try:
+            _lp = await _gs(callback.from_user.id, "lock_pv", 0)
+            _so = await _gs(callback.from_user.id, "secretary_on", 0)
+            _stx = await _gs(callback.from_user.id, "secretary_text") or "تنظیم نشده"
+        except Exception:
+            _lp, _so, _stx = 0, 0, "تنظیم نشده"
+        _lp_s = "🟢 فعال" if _lp else "🔴 غیرفعال"
+        _so_s = "🟢 روشن" if _so else "🔴 خاموش"
+        info_text = (
+            "⚙️ <b>بخش مدیریت</b>\n\n"
+            f"📊 <b>وضعیت فعلی:</b>\n"
+            f"┣ 🔒 قفل پیوی: {_lp_s}\n"
+            f"┣ 🤖 منشی: {_so_s}\n"
+            f"┗ ✉️ متن منشی: <i>{_stx}</i>\n\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "🗑 <b>حذف پیام</b>\n"
+            "<blockquote>روی پیام موردنظر ریپلای کن و <code>.حذف</code> بزن تا پیام برای هر دو طرف حذف شود.\n"
+            "برای پاک‌سازی گروهی: <code>.حذف 100</code> (بین ۱ تا ۱۰۰ پیام).\n"
+            "در گروه‌های تاپیک‌دار فقط همان تاپیک پاک می‌شود.</blockquote>\n\n"
+            "🧹 <b>پاک‌سازی کامل تاپیک</b>\n"
+            "<blockquote>داخل هر تاپیکی بنویس <code>.پاکسازی تاپیک</code> تا همه پیام‌های همان تاپیک (بدون سقف) حذف شوند. تاپیک‌های دیگر دست‌نخورده می‌مانند.</blockquote>\n\n"
+            "🔇 <b>سکوت کاربر</b>\n"
+            "<blockquote>روی پیام کاربر ریپلای کن و <code>.سکوت</code> بزن. از آن پس هر پیام او فوراً حذف می‌شود.\n"
+            "برای آزادسازی: <code>.حذف سکوت</code></blockquote>\n\n"
+            "🔒 <b>قفل پیوی</b>\n"
+            "<blockquote><code>.قفل پیوی</code> — روشن/خاموش\n"
+            "<code>.بازکردن قفل پیوی</code> — قطعاً غیرفعال\n"
+            "وقتی فعال باشد، هر پیام ورودی در پیوی حذف می‌شود.</blockquote>\n\n"
+            "🤖 <b>منشی خودکار</b>\n"
+            "<blockquote>1️⃣ <code>.تنظیم متن منشی [متن]</code>\n"
+            "2️⃣ <code>.منشی روشن</code> یا <code>.منشی خاموش</code>\n"
+            "سلف به‌طور خودکار به پیام‌های ورودی در پیوی پاسخ می‌دهد.</blockquote>\n\n"
+            "💥 <b>اسپم</b>\n"
+            "<blockquote><code>.اسپم متن 50</code> — متن را ۵۰ بار (۱..۱۰۰) در همین چت می‌فرستد و در پایان اعلام می‌کند.</blockquote>\n\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "👇 روی هر دستور کلیک کن تا کپی شود."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 بروزرسانی وضعیت", callback_data="cat_manage")],
+            [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
+        ])
+        try:
+            await _edit_panel(callback, info_text, kb)
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
     if data_str == "cat_personalize" or data_str.startswith("pers_tog:"):
         from bot.database import get_setting, toggle_setting
         if data_str.startswith("pers_tog:"):
@@ -659,6 +708,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text=f"🟢 همیشه آنلاین: {_st(ao)}", callback_data="pers_tog:always_online")],
             [InlineKeyboardButton(text=f"✍️ همیشه در حال نوشتن: {_st(at)}", callback_data="pers_tog:always_typing")],
+            [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="cat_personalize")],
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
@@ -772,7 +822,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         ])
         try:
             if callback.message:
-                await callback.message.edit_text(info_text, reply_markup=kb, parse_mode="HTML")
+                await callback.message.edit_text(info_text, reply_markup=kb)
             await callback.answer("✅ ذخیره شد" if data_str != "tool_guardian_info" else None)
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -792,8 +842,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(cheat_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, cheat_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -811,8 +860,7 @@ async def process_inline_panel_callback(callback: CallbackQuery):
             [InlineKeyboardButton(text="🔙 بازگشت به پنل", callback_data="back_to_panel")]
         ])
         try:
-            if callback.message:
-                await callback.message.edit_text(guide_text, reply_markup=kb, parse_mode="HTML")
+            await _edit_panel(callback, guide_text, kb)
             await callback.answer()
         except Exception as e:
             await callback.answer(f"خطا: {e}", show_alert=True)
@@ -841,76 +889,8 @@ async def cb_copy_stalk(callback: CallbackQuery):
         await callback.message.reply("کد کپی شد: `.استاک`", parse_mode="Markdown")
     await callback.answer("✅ دستور کپی شد!", show_alert=True)
 
-@dp.callback_query(F.data == "back_to_panel")
-async def cb_back_to_panel(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    balance = await get_yaqoot(user_id)
-    total_seconds = balance * 1800
-    days = total_seconds // 86400
-    hours = (total_seconds % 86400) // 3600
-    minutes = (total_seconds % 3600) // 60
-    seconds = total_seconds % 60
-    
-    now_utc = datetime.now(pytz.utc)
-    now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
-    time_str = now_tehran.strftime("%H:%M:%S")
-    date_miladi = now_tehran.strftime("%Y/%m/%d")
-    date_shamsi = JalaliDate(now_tehran).strftime("%Y/%m/%d")
-    
-    text = (
-        "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
-        f"💎 موجودی: **{balance}** یاقوت\n"
-        f"⏳ معادل: **{days}** روز، **{hours}** ساعت، **{minutes}** دقیقه، **{seconds}** ثانیه\n"
-        f"⏰ ساعت: `{time_str}`\n"
-        f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
-        "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
-    )
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
-        [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
-        [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
-        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
-    ])
-    try:
-        if callback.message:
-            await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-        await callback.answer("✅ به پنل اصلی بازگشتید.")
-    except Exception as e:
-        await callback.answer(f"خطا: {e}", show_alert=True)
-    user_id = callback.from_user.id
-    balance = await get_yaqoot(user_id)
-    total_seconds = balance * 1800
-    days = total_seconds // 86400
-    hours = (total_seconds % 86400) // 3600
-    minutes = (total_seconds % 3600) // 60
-    seconds = total_seconds % 60
-    
-    now_utc = datetime.now(pytz.utc)
-    now_tehran = now_utc.astimezone(pytz.timezone('Asia/Tehran'))
-    time_str = now_tehran.strftime("%H:%M:%S")
-    date_miladi = now_tehran.strftime("%Y/%m/%d")
-    date_shamsi = JalaliDate(now_tehran).strftime("%Y/%m/%d")
-    
-    text = (
-        "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
-        f"💎 موجودی: **{balance}** یاقوت\n"
-        f"⏳ معادل: **{days}** روز، **{hours}** ساعت، **{minutes}** دقیقه، **{seconds}** ثانیه\n"
-        f"⏰ ساعت: `{time_str}`\n"
-        f"📅 تاریخ شمسی: `{date_shamsi}` | میلادی: `{date_miladi}`\n\n"
-        "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
-    )
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎮 بازی ها", callback_data="cat_games"), InlineKeyboardButton(text="🛠 ابزار ها", callback_data="cat_tools")],
-        [InlineKeyboardButton(text="👀 نظارت و سرگرمی", callback_data="cat_fun"), InlineKeyboardButton(text="🎭 تقلب", callback_data="cat_cheat")],
-        [InlineKeyboardButton(text="🛡 استاک و امنیت", callback_data="cat_security")],
-        [InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="refresh_panel"), InlineKeyboardButton(text="❌ بستن پنل", callback_data="feat_close")]
-    ])
-    try:
-        if callback.message:
-            await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-        await callback.answer()
-    except Exception as e:
-        await callback.answer(f"خطا: {e}", show_alert=True)
+# back_to_panel is handled inside process_inline_panel_callback
+# (removed duplicate + broken handler that caused SyntaxError)
 
 @dp.callback_query(F.data == "feat_close")
 async def close_inline_panel(callback: CallbackQuery):
@@ -1151,11 +1131,13 @@ async def cb_toggle_on(callback: CallbackQuery):
         await deduct_yaqoot(user_id, 10)
         await set_user_active(user_id, 1)
         text, kb = await build_manage_text(user_id)
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        try:
+            await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            pass
         await callback.answer("✅ سلف شما با موفقیت روشن شد!", show_alert=True)
     except Exception as e:
         await callback.answer(f"خطا در روشن کردن: {e}", show_alert=True)
-        await callback.message.answer(f"خطای دقیق: `{e}`", parse_mode="Markdown")
 
 @dp.callback_query(F.data == "toggle_off")
 async def cb_toggle_off(callback: CallbackQuery):
@@ -1163,11 +1145,13 @@ async def cb_toggle_off(callback: CallbackQuery):
     try:
         await set_user_active(user_id, 0)
         text, kb = await build_manage_text(user_id)
-        await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        try:
+            await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+        except Exception:
+            pass
         await callback.answer("❌ سلف شما با موفقیت خاموش شد!", show_alert=True)
     except Exception as e:
         await callback.answer(f"خطا در خاموش کردن: {e}", show_alert=True)
-        await callback.message.answer(f"خطای دقیق: `{e}`", parse_mode="Markdown")
 
 @dp.callback_query(F.data == "refresh_manage")
 async def cb_refresh_manage(callback: CallbackQuery):
@@ -1206,9 +1190,13 @@ async def cb_account(message: Message):
 @dp.callback_query(F.data == "back_to_main")
 async def cb_back_to_main_inline(callback: CallbackQuery):
     try:
-        await callback.message.delete()
-        text = "🏠 **منوی اصلی**\n\nاز دکمه‌های زیر استفاده کنید:"
-        await callback.message.answer(text, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
+        if callback.message:
+            try:
+                await callback.message.delete()
+            except Exception:
+                pass
+            text = "🏠 **منوی اصلی**\n\nاز دکمه‌های زیر استفاده کنید:"
+            await callback.message.answer(text, reply_markup=MAIN_KEYBOARD, parse_mode="Markdown")
         await callback.answer()
     except Exception as e:
         await callback.answer(f"خطا: {e}", show_alert=True)
