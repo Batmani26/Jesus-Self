@@ -41,37 +41,48 @@ def register(client) -> None:
                 pass
 
             if n:
-                cnt = max(1, min(100, int(n)))
+                cnt = max(1, min(5000, int(n)))  # allow large values for full topic wipe
                 ids = []
-                if topic_id:
-                    # Fetch more than needed, then filter strictly by this topic only
-                    async for msg in client.iter_messages(chat_id, limit=cnt * 3):
-                        r = getattr(msg, "reply_to", None)
+                fetched = 0
+                hard_cap = max(cnt * 20, 500)  # safety cap on how many messages to scan
+                async for msg in client.iter_messages(chat_id):
+                    fetched += 1
+                    r = getattr(msg, "reply_to", None)
+                    if topic_id:
+                        # Only messages belonging to THIS topic
                         if r is None:
-                            continue
-                        mtopic = getattr(r, "reply_to_top_id", None) or (getattr(r, "reply_to_msg_id", None) if getattr(r, "forum_topic", False) else None)
-                        if mtopic == topic_id:
-                            ids.append(msg.id)
-                            if len(ids) >= cnt:
-                                break
-                else:
-                    # Not a forum topic: only fetch the General topic (no reply_to) or non-forum chat
-                    async for msg in client.iter_messages(chat_id, limit=cnt * 3):
-                        r = getattr(msg, "reply_to", None)
+                            pass
+                        else:
+                            mtopic = getattr(r, "reply_to_top_id", None)
+                            if mtopic is None and getattr(r, "forum_topic", False):
+                                mtopic = getattr(r, "reply_to_msg_id", None)
+                            if mtopic == topic_id:
+                                ids.append(msg.id)
+                                if len(ids) >= cnt:
+                                    break
+                    else:
+                        # Not a forum topic: only general (no reply_to) or non-forum chats
                         if r is None:
                             ids.append(msg.id)
                         elif not getattr(r, "forum_topic", False):
-                            # inside a topic but we are not: skip
-                            continue
+                            pass  # replies inside a topic but we are in General: skip
                         else:
-                            # belongs to some topic; if it's the General topic, allow
                             mt = getattr(r, "reply_to_top_id", None) or getattr(r, "reply_to_msg_id", None)
                             if mt is None:
                                 ids.append(msg.id)
                         if len(ids) >= cnt:
                             break
+                    if fetched >= hard_cap:
+                        break
+                # Delete in safe chunks of 100
                 if ids:
-                    await client.delete_messages(chat_id, ids, revoke=True)
+                    for i in range(0, len(ids), 100):
+                        chunk = ids[i:i+100]
+                        try:
+                            await client.delete_messages(chat_id, chunk, revoke=True)
+                        except Exception as exc:
+                            log.warning(f"chunk delete failed: {exc}")
+                        await asyncio.sleep(0.15)
                 try:
                     done = await client.send_message(
                         chat_id,
