@@ -38,28 +38,49 @@ def register(client) -> None:
         is_general = topic_id is None
         target_label = "تاپیک اصلی (General)" if is_general else "تاپیک جاری"
 
-        await client.send_message(
+        status_msg = await client.send_message(
             chat_id,
-            f"🧹 در حال پاکسازی کامل {target_label}... این ممکن است چند دقیقه طول بکشد.\n\n{SIG}",
+            f"🧹 در حال پاکسازی کامل {target_label}... لطفاً صبر کنید.\n\n{SIG}",
             reply_to=topic_id if topic_id else None,
         )
+
+        async def _flush(buf):
+            """Delete up to 100 msgs with FloodWait retry. Returns count."""
+            if not buf:
+                return 0
+            for attempt in range(3):
+                try:
+                    await client.delete_messages(chat_id, buf, revoke=True)
+                    return len(buf)
+                except Exception as exc:
+                    emsg = str(exc).lower()
+                    if "flood" in emsg or "wait" in emsg or "too many" in emsg:
+                        import re as _r
+                        mm = _r.search(r"(\d+)", str(exc))
+                        wait = int(mm.group(1)) + 2 if mm else 15
+                        log.warning(f"flood wait {wait}s")
+                        await asyncio.sleep(wait)
+                        continue
+                    log.warning(f"delete chunk failed: {exc}")
+                    return 0
+            return 0
 
         total = 0
         buffer = []
         try:
-            async for msg in client.iter_messages(chat_id):
+            # IMPORTANT: for a forum, iter_messages(chat_id) WITHOUT reply_to only returns
+            # General-topic messages. For a sub-topic we must pass reply_to=topic_id.
+            iter_kw = {}
+            if not is_general:
+                iter_kw["reply_to"] = topic_id
+            async for msg in client.iter_messages(chat_id, **iter_kw):
                 r = getattr(msg, "reply_to", None)
                 if is_general:
-                    # General topic = messages that do NOT belong to any forum sub-topic
+                    # General only: skip anything belonging to a sub-topic
                     if r is not None and getattr(r, "forum_topic", False):
                         continue
-                    # skip messages inside a sub-topic entirely
-                    if r is not None:
-                        mt = getattr(r, "reply_to_top_id", None) or getattr(r, "reply_to_msg_id", None)
-                        if mt is not None and getattr(r, "forum_topic", False):
-                            continue
-                    buffer.append(msg.id)
                 else:
+                    # Sub-topic only: must have reply_to pointing to our topic
                     if r is None:
                         continue
                     mtopic = getattr(r, "reply_to_top_id", None)
@@ -67,47 +88,28 @@ def register(client) -> None:
                         mtopic = getattr(r, "reply_to_msg_id", None)
                     if mtopic != topic_id:
                         continue
-                    buffer.append(msg.id)
+                buffer.append(msg.id)
                 if len(buffer) >= 100:
-                    try:
-                        await client.delete_messages(chat_id, buffer, revoke=True)
-                        total += len(buffer)
-                    except Exception as exc:
-                        # FloodWait handling
-                        emsg = str(exc).lower()
-                        if "flood" in emsg or "wait" in emsg or "too many" in emsg:
-                            import re as _r
-                            mm = _r.search(r"(\d+)", str(exc))
-                            wait = int(mm.group(1)) + 2 if mm else 15
-                            log.warning(f"flood wait {wait}s during topic wipe")
-                            await asyncio.sleep(wait)
-                            try:
-                                await client.delete_messages(chat_id, buffer, revoke=True)
-                                total += len(buffer)
-                            except Exception as e2:
-                                log.warning(f"retry delete failed: {e2}")
-                        else:
-                            log.warning(f"topic wipe chunk failed: {exc}")
+                    total += await _flush(buffer)
                     buffer = []
-                    await asyncio.sleep(0.2)
+                    await asyncio.sleep(0.15)
             if buffer:
-                try:
-                    await client.delete_messages(chat_id, buffer, revoke=True)
-                    total += len(buffer)
-                except Exception as exc:
-                    log.warning(f"final chunk failed: {exc}")
+                total += await _flush(buffer)
+                buffer = []
         except Exception as e:
             log.warning(f"topic wipe error: {e}")
 
-        # Delete the start message we sent too
+        # Update the SAME status message with the confirmation
         try:
-            await client.send_message(
-                chat_id,
-                f"✅ <b>پاکسازی تاپیک با موفقیت انجام شد</b> ({total} پیام)\n\n{SIG}",
+            await status_msg.edit(
+                f"✅ <b>پاکسازی {target_label} با موفقیت انجام شد</b> ({total} پیام)\n\n{SIG}",
                 parse_mode="html",
             )
         except Exception:
-            pass
+            try:
+                await client.edit_message(chat_id, status_msg.id, f"✅ پاکسازی انجام شد ({total} پیام) — {SIG}")
+            except Exception:
+                pass
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^{ep}حذف(?:\s+(\d+))?$"))
     async def cmd_delete(event: events.NewMessage.Event) -> None:
