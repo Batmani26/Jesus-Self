@@ -48,11 +48,28 @@ def register(client) -> None:
         is_general = topic_id is None
         target_label = "تاپیک اصلی (General)" if is_general else "تاپیک جاری"
 
-        status_msg = await client.send_message(
-            chat_id,
-            f"🧹 در حال پاکسازی کامل {target_label}... لطفاً صبر کنید.\n\n{SIG}",
-            reply_to=topic_id if topic_id else None,
-        )
+        status_msg = None
+        try:
+            if topic_id:
+                status_msg = await client.send_message(
+                    chat_id,
+                    f"🧹 در حال پاکسازی کامل {target_label}... لطفاً صبر کنید.\n\n{SIG}",
+                    reply_to=topic_id,
+                )
+            else:
+                status_msg = await client.send_message(
+                    chat_id,
+                    f"🧹 در حال پاکسازی کامل {target_label}... لطفاً صبر کنید.\n\n{SIG}",
+                )
+        except Exception as se:
+            log.warning(f"[WIPE] send status failed (reply_to={topic_id}): {se}; retry without reply_to")
+            try:
+                status_msg = await client.send_message(
+                    chat_id,
+                    f"🧹 در حال پاکسازی کامل {target_label}... لطفاً صبر کنید.\n\n{SIG}",
+                )
+            except Exception as se2:
+                log.warning(f"[WIPE] send status retry failed: {se2}")
 
         async def _flush(buf):
             """Delete up to 100 msgs with FloodWait retry. Returns count. Skips status_msg."""
@@ -77,7 +94,9 @@ def register(client) -> None:
 
         total = 0
         buffer = []
-        skip_ids = {status_msg.id, getattr(event.message, "id", None)}
+        skip_ids = {getattr(event.message, "id", None)}
+        if status_msg is not None:
+            skip_ids.add(status_msg.id)
         try:
             # Use the ACTUAL entity from the event to preserve access_hash (bare chat_id can
             # cause GetReplies to return empty in some Telethon versions).
@@ -199,17 +218,18 @@ def register(client) -> None:
         except Exception as e:
             log.warning(f"topic wipe error: {e}")
 
-        # Update the SAME status message with the confirmation
-        try:
-            await status_msg.edit(
-                f"✅ <b>پاکسازی {target_label} با موفقیت انجام شد</b> ({total} پیام)\n\n{SIG}",
-                parse_mode="html",
-            )
-        except Exception:
+        # Update the status message with confirmation (or send a new one if status creation failed)
+        body = f"✅ <b>پاکسازی {target_label} با موفقیت انجام شد</b> ({total} پیام)\n\n{SIG}"
+        if status_msg is not None:
             try:
-                await client.edit_message(chat_id, status_msg.id, f"✅ پاکسازی انجام شد ({total} پیام) — {SIG}")
-            except Exception:
-                pass
+                await status_msg.edit(body, parse_mode="html")
+                return
+            except Exception as ee:
+                log.warning(f"[WIPE] status edit failed: {ee}")
+        try:
+            await client.send_message(chat_id, body, parse_mode="html")
+        except Exception:
+            pass
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^{ep}حذف(?:\s+(\d+))?$"))
     async def cmd_delete(event: events.NewMessage.Event) -> None:
@@ -230,7 +250,6 @@ def register(client) -> None:
 
             if n:
                 cnt = max(1, min(5000, int(n)))
-                ids = []
                 try:
                     entity = await event.get_chat()
                 except Exception:
@@ -239,13 +258,31 @@ def register(client) -> None:
                     except Exception:
                         entity = chat_id
                 skip_ids = {getattr(event.message, "id", None)}
-                if topic_id:
-                    # Primary: scan all messages, filter strictly by reply_to_top_id == topic_id
-                    async for msg in client.iter_messages(entity):
-                        mid = getattr(msg, "id", None)
-                        if not mid or mid in skip_ids:
-                            continue
-                        r = getattr(msg, "reply_to", None)
+                # Send status message first (visible feedback)
+                status = None
+                try:
+                    if topic_id:
+                        status = await client.send_message(chat_id, f"🧹 در حال پاکسازی {cnt} پیام...", reply_to=topic_id)
+                    else:
+                        status = await client.send_message(chat_id, f"🧹 در حال پاکسازی {cnt} پیام...")
+                except Exception:
+                    try:
+                        status = await client.send_message(chat_id, f"🧹 در حال پاکسازی {cnt} پیام...")
+                    except Exception:
+                        status = None
+                if status is not None:
+                    skip_ids.add(status.id)
+
+                ids = []
+                hard_cap = max(cnt * 50, 500)
+                scanned = 0
+                async for msg in client.iter_messages(entity, limit=hard_cap):
+                    scanned += 1
+                    mid = getattr(msg, "id", None)
+                    if not mid or mid in skip_ids:
+                        continue
+                    r = getattr(msg, "reply_to", None)
+                    if topic_id:
                         if r is None:
                             continue
                         mt = getattr(r, "reply_to_top_id", None)
@@ -253,39 +290,32 @@ def register(client) -> None:
                             mt = getattr(r, "reply_to_msg_id", None)
                         if mt != topic_id:
                             continue
-                        ids.append(mid)
-                        if len(ids) >= cnt:
-                            break
-                    log.info(f"[DEL] topic={topic_id} collected={len(ids)} (want {cnt})")
-                else:
-                    # General: only messages not in any sub-topic
-                    async for msg in client.iter_messages(entity):
-                        mid = getattr(msg, "id", None)
-                        if not mid or mid in skip_ids:
-                            continue
-                        r = getattr(msg, "reply_to", None)
+                    else:
                         if r is not None and getattr(r, "forum_topic", False):
                             continue
-                        ids.append(mid)
-                        if len(ids) >= cnt:
-                            break
-                    log.info(f"[DEL] general collected={len(ids)} (want {cnt})")
+                    ids.append(mid)
+                    if len(ids) >= cnt:
+                        break
+                log.info(f"[DEL] topic={topic_id} collected={len(ids)} (want {cnt}) scanned={scanned}")
                 # Delete in safe chunks of 100
-                if ids:
-                    for i in range(0, len(ids), 100):
-                        chunk = ids[i:i+100]
-                        try:
-                            await client.delete_messages(chat_id, chunk, revoke=True)
-                        except Exception as exc:
-                            log.warning(f"chunk delete failed: {exc}")
-                        await asyncio.sleep(0.15)
+                deleted = 0
+                for i in range(0, len(ids), 100):
+                    chunk = ids[i:i+100]
+                    try:
+                        await client.delete_messages(chat_id, chunk, revoke=True)
+                        deleted += len(chunk)
+                    except Exception as exc:
+                        log.warning(f"chunk delete failed: {exc}")
+                    await asyncio.sleep(0.15)
+                body = f"🧹 <b>پاکسازی با موفقیت انجام شد</b> ({deleted} پیام)\n\n{SIG}"
+                if status is not None:
+                    try:
+                        await status.edit(body, parse_mode="html")
+                        return
+                    except Exception:
+                        pass
                 try:
-                    done = await client.send_message(
-                        chat_id,
-                        f"🧹 <b>پاکسازی با موفقیت انجام شد</b> ({len(ids)} پیام)\n\n{SIG}",
-                        parse_mode="html",
-                        reply_to=topic_id if topic_id else None,
-                    )
+                    await client.send_message(chat_id, body, parse_mode="html")
                 except Exception:
                     pass
                 return
