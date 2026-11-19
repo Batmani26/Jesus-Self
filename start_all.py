@@ -104,17 +104,31 @@ async def run_all():
                 await asyncio.sleep(5)
                 
     async def polling_forever():
-        """Auto-restart aiogram polling if it crashes."""
+        """Auto-restart aiogram polling. Handles TelegramConflictError gracefully (another instance
+        still terminating after deploy)."""
+        conflict_attempts = 0
         while True:
+            try:
+                await bot.delete_webhook(drop_pending_updates=True)
+            except Exception:
+                pass
             try:
                 await dp.start_polling(
                     bot,
                     allowed_updates=["message", "callback_query", "inline_query", "chosen_inline_result", "my_chat_member", "chat_member"],
                     handle_signals=False,
                 )
+                conflict_attempts = 0
             except asyncio.CancelledError:
                 raise
             except Exception as e:
+                emsg = str(e).lower()
+                if "conflict" in emsg or "terminated by other getupdates" in emsg:
+                    conflict_attempts += 1
+                    wait = min(30, 3 * conflict_attempts)
+                    log.warning(f"TelegramConflictError: another instance is polling the same bot. Retry in {wait}s (attempt {conflict_attempts}). Only one instance should run.")
+                    await asyncio.sleep(wait)
+                    continue
                 log.error(f"Polling crashed: {e}. Restarting in 10s...", exc_info=True)
                 await asyncio.sleep(10)
 
