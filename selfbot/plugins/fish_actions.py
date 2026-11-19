@@ -116,7 +116,14 @@ async def handle_catch(client, chat_id, sent_msg_id, modes, timeout=40):
             if not button:
                 break
             try:
-                await button.click()
+                cb_data = getattr(button, "data", None)
+                if cb_data is not None:
+                    from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
+                    await client(GetBotCallbackAnswerRequest(
+                        peer=chat_id, msg_id=bot_msg.id, data=cb_data,
+                    ))
+                else:
+                    await button.click()
                 clicked = True
                 print(f"[FISH] {rarity}/{mode} clicked (try {attempt + 1})")
             except Exception as exc:

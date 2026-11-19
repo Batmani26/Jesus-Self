@@ -55,7 +55,14 @@ async def _try_rescue(client, chat_id, msg):
             if not target:
                 break
             try:
-                await target.click()
+                from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
+                cb_data = getattr(target, "data", None)
+                if cb_data is not None:
+                    await client(GetBotCallbackAnswerRequest(
+                        peer=chat_id, msg_id=current.id, data=cb_data,
+                    ))
+                else:
+                    await target.click()
                 _CLICKED.add(key)
                 print(f"[SAVE CAT] clicked rescue in {chat_id} (try {attempt+1})")
                 if SAVE_CAT_STATUS.get("announce"):

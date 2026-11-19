@@ -1523,10 +1523,20 @@ async def process_code_input(message: Message, code: str):
         
     if success:
         session_string = data["client"].session.save()
-        await save_session(user_id, session_string)
-        del USER_STATES[user_id]
-        del CLIENTS[user_id]
-        await data["client"].disconnect()
+        try:
+            try:
+                await add_user(user_id, getattr(message.from_user, "username", None), getattr(message.from_user, "first_name", "user"))
+            except Exception as ue:
+                print(f"add_user pre-save failed (non-fatal): {ue}")
+            await save_session(user_id, session_string)
+        except Exception as se:
+            print(f"save_session failed: {se}")
+        USER_STATES.pop(user_id, None)
+        CLIENTS.pop(user_id, None)
+        try:
+            await data["client"].disconnect()
+        except Exception:
+            pass
         await message.answer(
             "🎉 **سلف‌بات شما با موفقیت ساخته شد!**\n\n"
             "اکنون می‌توانید از قابلیت‌های سلف استفاده کنید.",
@@ -1563,10 +1573,21 @@ async def process_password(message: Message):
         success, error = await verify_password(data["client"], password)
         if success:
             session_string = data["client"].session.save()
-            await save_session(message.from_user.id, session_string)
-            del USER_STATES[message.from_user.id]
-            del CLIENTS[message.from_user.id]
-            await data["client"].disconnect()
+            try:
+                # Make sure user row exists before save_session (prevents lost sessions)
+                try:
+                    await add_user(message.from_user.id, getattr(message.from_user, "username", None), getattr(message.from_user, "first_name", "user"))
+                except Exception as ue:
+                    print(f"add_user pre-save failed (non-fatal): {ue}")
+                await save_session(message.from_user.id, session_string)
+            except Exception as se:
+                print(f"save_session failed: {se}")
+            USER_STATES.pop(message.from_user.id, None)
+            CLIENTS.pop(message.from_user.id, None)
+            try:
+                await data["client"].disconnect()
+            except Exception:
+                pass
             await message.answer(
                 "🎉 **سلف‌بات شما با موفقیت ساخته شد!**\n\n"
                 "اکنون می‌توانید از قابلیت‌های سلف استفاده کنید.",
@@ -1580,8 +1601,8 @@ async def process_password(message: Message):
                     print(f"Could not notify admin: {e}")
         else:
             await message.answer(f"❌ رمز اشتباه است:\n`{error}`", reply_markup=MAIN_KEYBOARD)
-            del USER_STATES[message.from_user.id]
-            del CLIENTS[message.from_user.id]
+            USER_STATES.pop(message.from_user.id, None)
+            CLIENTS.pop(message.from_user.id, None)
 
 async def main():
     print("[OK] Jesus Self Manager is running...")

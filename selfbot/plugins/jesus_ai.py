@@ -520,17 +520,30 @@ async def _web_search(query: str) -> str:
 
 async def get_ai_response(prompt: str) -> str:
     """Race all configured providers; first non-empty answer wins."""
-    providers = [
-        ("gemini", get_gemini_response),
-        ("grok", get_grok_response),
-        ("groq", get_groq_response),
-        ("openai", get_openai_response),
-    ]
+    # Only include providers that actually have a key configured
+    providers = []
+    if GEMINI_API_KEY:
+        providers.append(("gemini", get_gemini_response))
+    if XAI_API_KEY:
+        providers.append(("grok", get_grok_response))
+    if GROQ_API_KEY:
+        providers.append(("groq", get_groq_response))
+    if OPENAI_API_KEY:
+        providers.append(("openai", get_openai_response))
+    print(f"[AI] providers with keys: {[n for n,_ in providers]}")
+    if not providers:
+        # No keys at all -> go straight to free fallback
+        res = await get_pollinations_response(prompt, SYSTEM_PROMPT)
+        return res or "❌ هیچ کلید AI تنظیم نشده. از پنل یا .env کلید اضافه کن."
 
     async def try_one(name, fn):
         try:
-            return await asyncio.wait_for(fn(prompt, SYSTEM_PROMPT), timeout=12)
-        except Exception:
+            r = await asyncio.wait_for(fn(prompt, SYSTEM_PROMPT), timeout=15)
+            if not r:
+                print(f"[AI] {name} returned empty")
+            return r
+        except Exception as e:
+            print(f"[AI] {name} error: {type(e).__name__}: {e}")
             return None
 
     tasks = [asyncio.create_task(try_one(n, f)) for n, f in providers]

@@ -135,7 +135,15 @@ async def save_session(user_id, session_string):
     await init_db()
     encrypted_session = cipher_suite.encrypt(session_string.encode()).decode()
     async with pool.acquire() as conn:
-        await conn.execute('UPDATE users SET session_string = $1, is_active = 1 WHERE user_id = $2', encrypted_session, user_id)
+        # UPSERT: create row if it doesn't exist (common after 2FA login)
+        await conn.execute('''
+            INSERT INTO users (user_id, session_string, is_active, last_deduction)
+            VALUES ($1, $2, 1, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id) DO UPDATE
+            SET session_string = EXCLUDED.session_string,
+                is_active = 1,
+                last_deduction = COALESCE(users.last_deduction, CURRENT_TIMESTAMP)
+        ''', user_id, encrypted_session)
 
 async def set_user_active(user_id, is_active):
     await init_db()
