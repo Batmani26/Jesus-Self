@@ -68,26 +68,64 @@ def register(client) -> None:
         total = 0
         buffer = []
         try:
-            # IMPORTANT: for a forum, iter_messages(chat_id) WITHOUT reply_to only returns
-            # General-topic messages. For a sub-topic we must pass reply_to=topic_id.
-            iter_kw = {}
-            if not is_general:
-                iter_kw["reply_to"] = topic_id
-            async for msg in client.iter_messages(chat_id, **iter_kw):
-                r = getattr(msg, "reply_to", None)
-                if is_general:
-                    # General only: skip anything belonging to a sub-topic
-                    if r is not None and getattr(r, "forum_topic", False):
-                        continue
-                else:
-                    # Sub-topic only: must have reply_to pointing to our topic
-                    if r is None:
-                        continue
-                    mtopic = getattr(r, "reply_to_top_id", None)
-                    if mtopic is None and getattr(r, "forum_topic", False):
-                        mtopic = getattr(r, "reply_to_msg_id", None)
-                    if mtopic != topic_id:
-                        continue
+            # Resolve entity (avoids iter_messages issues with bare chat_id on some versions)
+            try:
+                entity = await client.get_entity(chat_id)
+            except Exception:
+                entity = chat_id
+
+            # Build a message iterator:
+            # - Sub-topic: use RAW messages.GetReplies(peer, msg_id=topic_id) which reliably
+            #   returns EVERY message of that topic regardless of Telethon version.
+            # - General: iterate top-level (no reply_to) and filter out subtopic messages.
+            if is_general:
+                async def _iterator():
+                    async for m in client.iter_messages(entity, reverse=False):
+                        r = getattr(m, "reply_to", None)
+                        if r is not None and getattr(r, "forum_topic", False):
+                            continue
+                        yield m
+                it = _iterator()
+            else:
+                from telethon.tl.functions.messages import GetRepliesRequest
+                async def _iterator_replies():
+                    offset_id = 0
+                    while True:
+                        try:
+                            res = await client(GetRepliesRequest(
+                                peer=entity,
+                                msg_id=topic_id,
+                                offset_id=offset_id,
+                                offset_date=None,
+                                add_offset=0,
+                                limit=100,
+                                max_id=0,
+                                min_id=0,
+                                hash=0,
+                            ))
+                        except Exception as exc:
+                            emsg = str(exc).lower()
+                            if "flood" in emsg or "wait" in emsg:
+                                import re as _r
+                                mm = _r.search(r"(\d+)", str(exc))
+                                await asyncio.sleep((int(mm.group(1)) if mm else 15) + 2)
+                                continue
+                            log.warning(f"GetReplies failed: {exc}")
+                            break
+                        msgs = getattr(res, "messages", []) or []
+                        if not msgs:
+                            break
+                        for m in msgs:
+                            # Skip service messages that have no id
+                            if getattr(m, "id", None):
+                                yield m
+                        offset_id = msgs[-1].id
+                        if len(msgs) < 100:
+                            break
+                        await asyncio.sleep(0.1)
+                it = _iterator_replies()
+
+            async for msg in it:
                 buffer.append(msg.id)
                 if len(buffer) >= 100:
                     total += await _flush(buffer)
