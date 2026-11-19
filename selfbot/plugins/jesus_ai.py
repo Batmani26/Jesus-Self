@@ -98,20 +98,24 @@ async def get_groq_response(prompt: str, system: str = "") -> str | None:
 async def get_gemini_response(prompt: str, system: str = "") -> str | None:
     if not GEMINI_API_KEY:
         return None
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
-    )
     contents = [{"role": "user", "parts": [{"text": prompt}]}]
     data = {"contents": contents}
     if system:
         data["systemInstruction"] = {"parts": [{"text": system}]}
-    res = await _post_json(url, {}, data)
-    if res:
-        try:
-            return res["candidates"][0]["content"]["parts"][0]["text"]
-        except (KeyError, IndexError):
-            pass
+    # Try models in order — Google deprecates old ones for new keys
+    for model in ("gemini-flash-lite-latest", "gemini-3.1-flash-lite", "gemini-3.1-flash-lite-preview", "gemini-flash-latest"):
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model}:generateContent?key={GEMINI_API_KEY}"
+        )
+        res = await _post_json(url, {}, data)
+        if res:
+            try:
+                txt = res["candidates"][0]["content"]["parts"][0]["text"]
+                if txt:
+                    return txt
+            except (KeyError, IndexError):
+                continue
     return None
 
 
