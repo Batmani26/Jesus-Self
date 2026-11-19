@@ -90,15 +90,37 @@ async def start_user_client(user_id, session_string):
             return
         # Exists but disconnected -> force reconnect
         await stop_user_client(user_id)
+    if not session_string:
+        log.warning(f"Skip starting selfbot for user {user_id}: empty session (user must re-login)")
+        try:
+            from bot.database import deactivate_user
+            await deactivate_user(user_id)
+        except Exception:
+            pass
+        return
     try:
         client = build_client(session_string)
-        await client.start()
+        try:
+            await client.start()
+        except EOFError:
+            # SESSION_STRING was invalid or empty-ish -> deactivate so we don't loop forever
+            log.error(f"Session for {user_id} requires interactive login; deactivating")
+            try:
+                from bot.database import deactivate_user
+                await deactivate_user(user_id)
+            except Exception:
+                pass
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+            return
         load_plugins(client)
         ACTIVE_CLIENTS[user_id] = client
         log.info(f"Started selfbot for user {user_id}")
         WATCHDOG_TASKS[user_id] = asyncio.create_task(_watch_client(user_id, client))
     except Exception as e:
-        log.error(f"Failed to start selfbot for user {user_id}: {e}")
+        log.error(f"Failed to start selfbot for user {user_id}: {type(e).__name__}: {e}")
         ACTIVE_CLIENTS.pop(user_id, None)
 
 async def stop_user_client(user_id):
@@ -121,7 +143,12 @@ async def manager_loop():
     while True:
         try:
             # 1. Always ensure admin client is connected
-            if config.SESSION_STRING:
+            if not config.SESSION_STRING:
+                # Prevent infinite 'Please enter your phone' loop when env missing
+                if not getattr(manager_loop, "_admin_warned", False):
+                    log.error("SESSION_STRING is missing in Render env → admin selfbot cannot start (will retry silently)")
+                    manager_loop._admin_warned = True  # type: ignore[attr-defined]
+            else:
                 admin_client = ACTIVE_CLIENTS.get(ADMIN_ID)
                 if not admin_client or not admin_client.is_connected():
                     if admin_client:

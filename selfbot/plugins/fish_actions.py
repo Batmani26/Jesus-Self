@@ -41,36 +41,46 @@ def _all_buttons(markup):
 
 
 def _pick_button(markup, mode):
-    """Find the button matching the user's mode. Fallback: any non-close button."""
+    """Find the button matching the user's mode. Fallback: first usable (non-close, non-empty) button."""
     if not markup:
         return None
     kws = MODE_KEYWORDS.get(mode, MODE_KEYWORDS["sell"])
-    # 1) Exact keyword match
+    # 1) Exact keyword match by visible text
     for row in markup.rows:
         for b in row.buttons:
             lbl = getattr(b, "text", "") or ""
             for kw in kws:
                 if kw in lbl:
                     return b
-    # 2) Fallback: any button whose label is not 'بستن' / 'close' / 'انصراف'
+    # 2) Fallback: first button that has a real label (not zero-width only)
+    def _real(lbl: str) -> bool:
+        return bool(lbl) and lbl.strip("\u200b\u200c\u200d\ufeff \t\n").strip() != ""
     for row in markup.rows:
         for b in row.buttons:
             lbl = getattr(b, "text", "") or ""
-            if lbl and "بستن" not in lbl and "close" not in lbl.lower() and "انصراف" not in lbl:
+            if _real(lbl) and "بستن" not in lbl and "close" not in lbl.lower() and "انصراف" not in lbl:
                 return b
-    return None
+    # 3) Last resort: first button by INDEX (mode order: sell=0, cat=1, fridge=2)
+    idx = {"sell": 0, "cat": 1, "fridge": 2}.get(mode, 0)
+    flat = [b for row in markup.rows for b in row.buttons]
+    if 0 <= idx < len(flat):
+        return flat[idx]
+    return flat[0] if flat else None
 
 
 async def _click_button(client, peer, msg_id, button):
-    """Use raw GetBotCallbackAnswerRequest for maximum compatibility with selfbots."""
+    """Click robustly: try button.click() (handles URL+callback+correct msg ref) first,
+    then fall back to raw GetBotCallbackAnswerRequest for callback buttons only."""
+    # 1) Primary: button.click() — knows the correct message + button type
+    try:
+        await button.click()
+        return True
+    except Exception as e:
+        print(f"[FISH] button.click() failed: {type(e).__name__}: {e}")
+    # 2) Fallback: raw callback request (only if data is a non-empty bytes/str)
     data = getattr(button, "data", None)
-    if data is None:
-        try:
-            await button.click()
-            return True
-        except Exception as e:
-            print(f"[FISH] fallback click failed: {e}")
-            return False
+    if not data:
+        return False
     try:
         from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
         await client(GetBotCallbackAnswerRequest(peer=peer, msg_id=msg_id, data=data))

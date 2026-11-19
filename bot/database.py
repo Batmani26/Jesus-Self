@@ -107,8 +107,15 @@ async def get_decrypted_session(user_id):
         if row and row['session_string']:
             try:
                 return cipher_suite.decrypt(row['session_string'].encode()).decode()
-            except Exception:
-                print(f"[DB] session decrypt failed for {user_id}; user must re-login.")
+            except Exception as dec_exc:
+                # Most common cause: ENCRYPTION_KEY changed (env not set -> temp key generated)
+                print(f"[DB] session decrypt failed for {user_id} ({type(dec_exc).__name__}); user must re-login. "
+                      f"Set a STABLE ENCRYPTION_KEY env on Render to prevent this.")
+                try:
+                    async with pool.acquire() as c2:
+                        await c2.execute('UPDATE users SET is_active = 0 WHERE user_id = $1', user_id)
+                except Exception:
+                    pass
                 return None
         return None
 
