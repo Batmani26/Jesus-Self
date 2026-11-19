@@ -35,68 +35,80 @@ def _has_rescue(msg):
 
 
 async def _try_rescue(client, chat_id, msg):
+    """Fire the rescue click up to 3 times as fast as possible (race other selfbots)."""
     key = (chat_id, msg.id)
     if key in _INFLIGHT or key in _CLICKED:
         return
     _INFLIGHT.add(key)
     try:
-        for attempt in range(4):
-            try:
-                current = await client.get_messages(chat_id, ids=msg.id)
-            except Exception as exc:
-                print(f"[SAVE CAT] fetch error: {exc}")
-                await asyncio.sleep(0.3)
-                continue
-            if not current or not getattr(current, "reply_markup", None):
-                await asyncio.sleep(0.5)
-                continue
-            buttons = [b for row in current.reply_markup.rows for b in row.buttons]
+        # Locate the rescue button once (from the event message itself — no fetch latency)
+        markup = getattr(msg, "reply_markup", None)
+        target = None
+        if markup:
+            buttons = [b for row in markup.rows for b in row.buttons]
             labels = [getattr(b, "text", "") or "" for b in buttons]
             print(f"[SAVE CAT] buttons available: {labels}")
-            target = None
-            # 1) keyword match
             for b in buttons:
                 t = getattr(b, "text", "") or ""
                 if any(k in t for k in _RESCUE_KEYWORDS):
                     target = b
                     break
-            # 2) fallback: first visible non-close button
             if target is None:
                 for b in buttons:
                     t = (getattr(b, "text", "") or "").strip()
                     if t and "بستن" not in t and "close" not in t.lower() and "انصراف" not in t:
                         target = b
                         break
-            if target is None:
-                print("[SAVE CAT] no usable button")
-                break
-            clicked_ok = False
-            # Try button.click() first (it knows URL vs callback and correct msg)
+        if target is None:
+            print("[SAVE CAT] no usable button on event; trying one fetch")
             try:
-                await target.click()
-                clicked_ok = True
+                current = await client.get_messages(chat_id, ids=msg.id)
+                markup = getattr(current, "reply_markup", None) if current else None
+                if markup:
+                    for row in markup.rows:
+                        for b in row.buttons:
+                            t = getattr(b, "text", "") or ""
+                            if any(k in t for k in _RESCUE_KEYWORDS):
+                                target = b
+                                break
+                        if target:
+                            break
             except Exception as exc:
-                print(f"[SAVE CAT] button.click() failed: {type(exc).__name__}: {exc}")
-            # Fallback: raw callback answer
-            if not clicked_ok:
-                cb_data = getattr(target, "data", None)
-                if cb_data:
-                    try:
-                        from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
-                        await client(GetBotCallbackAnswerRequest(peer=chat_id, msg_id=current.id, data=cb_data))
-                        clicked_ok = True
-                    except Exception as exc:
-                        print(f"[SAVE CAT] callback answer failed: {type(exc).__name__}: {exc}")
-            if clicked_ok:
-                _CLICKED.add(key)
-                print(f"[SAVE CAT] click OK on '{getattr(target, 'text', '?')}' in {chat_id} (try {attempt+1})")
-                if SAVE_CAT_STATUS.get("announce"):
-                    try:
-                        await client.send_message("me", f"🐈 **پیشی نجات پیدا کرد!**\n\n📍 چت: <code>{chat_id}</code>")
-                    except Exception as exc:
-                        print(f"[SAVE CAT] announce error: {exc}")
-                break
-            await asyncio.sleep(0.3)
+                print(f"[SAVE CAT] fetch error: {exc}")
+        if target is None:
+            return
+
+        cb_data = getattr(target, "data", None)
+        ok_any = False
+        # 3 rapid clicks with the absolute minimum delay between them
+        for attempt in range(3):
+            # Prefer raw callback (fastest, no server round-trip for button type)
+            if cb_data:
+                try:
+                    from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
+                    await client(GetBotCallbackAnswerRequest(peer=chat_id, msg_id=msg.id, data=cb_data))
+                    ok_any = True
+                    print(f"[SAVE CAT] callback click {attempt+1}/3 on '{getattr(target,'text','?')}' in {chat_id}")
+                except Exception as exc:
+                    print(f"[SAVE CAT] callback {attempt+1} failed: {type(exc).__name__}: {exc}")
+            else:
+                try:
+                    await target.click()
+                    ok_any = True
+                    print(f"[SAVE CAT] click {attempt+1}/3 on '{getattr(target,'text','?')}' in {chat_id}")
+                except Exception as exc:
+                    print(f"[SAVE CAT] click {attempt+1} failed: {type(exc).__name__}: {exc}")
+            # tiny gap so Telegram accepts the next callback_query
+            if attempt < 2:
+                await asyncio.sleep(0.08)
+
+        if ok_any:
+            _CLICKED.add(key)
+            if SAVE_CAT_STATUS.get("announce"):
+                try:
+                    await client.send_message("me", f"🐈 **پیشی نجات پیدا کرد!**\n\n📍 چت: <code>{chat_id}</code>")
+                except Exception as exc:
+                    print(f"[SAVE CAT] announce error: {exc}")
     finally:
         _INFLIGHT.discard(key)
 
