@@ -25,12 +25,22 @@ def register(client) -> None:
 
     @client.on(events.NewMessage(outgoing=True, pattern=rf"^{ep}پاکسازی تاپیک$"))
     async def cmd_wipe_topic(event: events.NewMessage.Event) -> None:
+        log.info(f"[WIPE] triggered chat_id={event.chat_id} raw_reply_to={getattr(event.message, 'reply_to', None)}")
         chat_id = event.chat_id
         # Detect current topic (must be a forum topic)
         topic_id = None
         rt = getattr(event.message, "reply_to", None)
-        if rt is not None and getattr(rt, "forum_topic", False):
-            topic_id = getattr(rt, "reply_to_top_id", None) or getattr(rt, "reply_to_msg_id", None)
+        if rt is not None:
+            forum_flag = getattr(rt, "forum_topic", False)
+            top = getattr(rt, "reply_to_top_id", None)
+            sub = getattr(rt, "reply_to_msg_id", None)
+            log.info(f"[WIPE] forum_topic={forum_flag} top_id={top} sub_id={sub}")
+            # In forum groups, being inside a topic always has forum_topic=True or reply_to_top_id set
+            if top is not None:
+                topic_id = top
+            elif forum_flag and sub is not None:
+                topic_id = sub
+        log.info(f"[WIPE] resolved topic_id={topic_id} (None means General)")
         try:
             await event.delete()
         except Exception:
@@ -167,39 +177,53 @@ def register(client) -> None:
                 pass
 
             if n:
-                cnt = max(1, min(5000, int(n)))  # allow large values for full topic wipe
+                cnt = max(1, min(5000, int(n)))
                 ids = []
-                fetched = 0
-                hard_cap = max(cnt * 20, 500)  # safety cap on how many messages to scan
-                async for msg in client.iter_messages(chat_id):
-                    fetched += 1
-                    r = getattr(msg, "reply_to", None)
-                    if topic_id:
-                        # Only messages belonging to THIS topic
-                        if r is None:
-                            pass
-                        else:
-                            mtopic = getattr(r, "reply_to_top_id", None)
-                            if mtopic is None and getattr(r, "forum_topic", False):
-                                mtopic = getattr(r, "reply_to_msg_id", None)
-                            if mtopic == topic_id:
-                                ids.append(msg.id)
+                try:
+                    entity = await client.get_entity(chat_id)
+                except Exception:
+                    entity = chat_id
+                if topic_id:
+                    # Reliable topic-scoped fetch via GetReplies pagination
+                    from telethon.tl.functions.messages import GetRepliesRequest
+                    offset_id = 0
+                    while len(ids) < cnt:
+                        try:
+                            res = await client(GetRepliesRequest(
+                                peer=entity, msg_id=topic_id, offset_id=offset_id,
+                                offset_date=None, add_offset=0, limit=min(100, cnt - len(ids)),
+                                max_id=0, min_id=0, hash=0,
+                            ))
+                        except Exception as exc:
+                            emsg = str(exc).lower()
+                            if "flood" in emsg or "wait" in emsg:
+                                import re as _r
+                                mm = _r.search(r"(\d+)", str(exc))
+                                await asyncio.sleep((int(mm.group(1)) if mm else 15) + 2)
+                                continue
+                            log.warning(f"GetReplies (delete) failed: {exc}")
+                            break
+                        msgs = getattr(res, "messages", []) or []
+                        if not msgs:
+                            break
+                        for mm2 in msgs:
+                            if getattr(mm2, "id", None):
+                                ids.append(mm2.id)
                                 if len(ids) >= cnt:
                                     break
-                    else:
-                        # Not a forum topic: only general (no reply_to) or non-forum chats
-                        if r is None:
-                            ids.append(msg.id)
-                        elif not getattr(r, "forum_topic", False):
-                            pass  # replies inside a topic but we are in General: skip
-                        else:
-                            mt = getattr(r, "reply_to_top_id", None) or getattr(r, "reply_to_msg_id", None)
-                            if mt is None:
-                                ids.append(msg.id)
+                        offset_id = msgs[-1].id
+                        if len(msgs) < 100:
+                            break
+                        await asyncio.sleep(0.1)
+                else:
+                    # General: only messages not in any sub-topic
+                    async for msg in client.iter_messages(entity, limit=cnt * 3):
+                        r = getattr(msg, "reply_to", None)
+                        if r is not None and getattr(r, "forum_topic", False):
+                            continue
+                        ids.append(msg.id)
                         if len(ids) >= cnt:
                             break
-                    if fetched >= hard_cap:
-                        break
                 # Delete in safe chunks of 100
                 if ids:
                     for i in range(0, len(ids), 100):
