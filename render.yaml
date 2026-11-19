@@ -9,3 +9,25 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.8
+      # Secrets below are entered ONCE in the Render dashboard → Environment.
+      # They are intentionally NOT committed to git (sync: false).
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: SESSION_NAME
+        value: jesus_self_session
+      - key: DATABASE_URL
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_ID
+        sync: false
+      - key: SESSION_STRING
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false

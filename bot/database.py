@@ -10,10 +10,23 @@ except ImportError:
     pass
 
 # Generate a key (in production, keep this in .env)
+def _derive_stable_key() -> str:
+    """Derive a stable Fernet key from an env-based secret so sessions survive restarts
+    even when ENCRYPTION_KEY is not explicitly set."""
+    import hashlib, base64
+    seed = (os.getenv("ENCRYPTION_KEY_SEED")
+            or os.getenv("BOT_TOKEN")
+            or os.getenv("SESSION_STRING")
+            or os.getenv("DATABASE_URL")
+            or "jesus-self-default")
+    digest = hashlib.sha256(seed.encode("utf-8")).digest()
+    return base64.urlsafe_b64encode(digest).decode()
+
+
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 if not ENCRYPTION_KEY:
-    ENCRYPTION_KEY = Fernet.generate_key().decode()
-    print("[WARN] ENCRYPTION_KEY not set; generated a temporary one. Stored sessions cannot be decrypted after restart.")
+    ENCRYPTION_KEY = _derive_stable_key()
+    print("[INFO] ENCRYPTION_KEY not set; using deterministic key derived from stable env secret (survives restarts).")
 cipher_suite = Fernet(ENCRYPTION_KEY.encode())
 
 DB_URL = os.getenv("DATABASE_URL")
