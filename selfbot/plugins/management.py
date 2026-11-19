@@ -43,11 +43,33 @@ def register(client) -> None:
             if n:
                 cnt = max(1, min(100, int(n)))
                 ids = []
-                kw = {}
                 if topic_id:
-                    kw["reply_to"] = topic_id
-                async for msg in client.iter_messages(chat_id, limit=cnt, **kw):
-                    ids.append(msg.id)
+                    # Fetch more than needed, then filter strictly by this topic only
+                    async for msg in client.iter_messages(chat_id, limit=cnt * 3):
+                        r = getattr(msg, "reply_to", None)
+                        if r is None:
+                            continue
+                        mtopic = getattr(r, "reply_to_top_id", None) or (getattr(r, "reply_to_msg_id", None) if getattr(r, "forum_topic", False) else None)
+                        if mtopic == topic_id:
+                            ids.append(msg.id)
+                            if len(ids) >= cnt:
+                                break
+                else:
+                    # Not a forum topic: only fetch the General topic (no reply_to) or non-forum chat
+                    async for msg in client.iter_messages(chat_id, limit=cnt * 3):
+                        r = getattr(msg, "reply_to", None)
+                        if r is None:
+                            ids.append(msg.id)
+                        elif not getattr(r, "forum_topic", False):
+                            # inside a topic but we are not: skip
+                            continue
+                        else:
+                            # belongs to some topic; if it's the General topic, allow
+                            mt = getattr(r, "reply_to_top_id", None) or getattr(r, "reply_to_msg_id", None)
+                            if mt is None:
+                                ids.append(msg.id)
+                        if len(ids) >= cnt:
+                            break
                 if ids:
                     await client.delete_messages(chat_id, ids, revoke=True)
                 try:
