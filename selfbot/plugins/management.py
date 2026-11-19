@@ -35,18 +35,13 @@ def register(client) -> None:
             await event.delete()
         except Exception:
             pass
-        if not topic_id:
-            await client.send_message(
-                chat_id,
-                f"❌ این دستور فقط داخل یک تاپیک (نه تاپیک اصلی) کار می‌کند. داخل تاپیک موردنظر بزن <code>{p}پاکسازی تاپیک</code>",
-                parse_mode="html",
-            )
-            return
+        is_general = topic_id is None
+        target_label = "تاپیک اصلی (General)" if is_general else "تاپیک جاری"
 
         await client.send_message(
             chat_id,
-            f"🧹 در حال پاکسازی کامل تاپیک... این ممکن است چند دقیقه طول بکشد.\n\n{SIG}",
-            reply_to=topic_id,
+            f"🧹 در حال پاکسازی کامل {target_label}... این ممکن است چند دقیقه طول بکشد.\n\n{SIG}",
+            reply_to=topic_id if topic_id else None,
         )
 
         total = 0
@@ -54,14 +49,25 @@ def register(client) -> None:
         try:
             async for msg in client.iter_messages(chat_id):
                 r = getattr(msg, "reply_to", None)
-                if r is None:
-                    continue
-                mtopic = getattr(r, "reply_to_top_id", None)
-                if mtopic is None and getattr(r, "forum_topic", False):
-                    mtopic = getattr(r, "reply_to_msg_id", None)
-                if mtopic != topic_id:
-                    continue
-                buffer.append(msg.id)
+                if is_general:
+                    # General topic = messages that do NOT belong to any forum sub-topic
+                    if r is not None and getattr(r, "forum_topic", False):
+                        continue
+                    # skip messages inside a sub-topic entirely
+                    if r is not None:
+                        mt = getattr(r, "reply_to_top_id", None) or getattr(r, "reply_to_msg_id", None)
+                        if mt is not None and getattr(r, "forum_topic", False):
+                            continue
+                    buffer.append(msg.id)
+                else:
+                    if r is None:
+                        continue
+                    mtopic = getattr(r, "reply_to_top_id", None)
+                    if mtopic is None and getattr(r, "forum_topic", False):
+                        mtopic = getattr(r, "reply_to_msg_id", None)
+                    if mtopic != topic_id:
+                        continue
+                    buffer.append(msg.id)
                 if len(buffer) >= 100:
                     try:
                         await client.delete_messages(chat_id, buffer, revoke=True)
