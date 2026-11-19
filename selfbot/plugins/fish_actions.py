@@ -1,8 +1,13 @@
-"""Fishing action helper: detect caught fish rarity and click the matching action button."""
+"""Fishing action helper: event-driven click on the Meowie bot reply.
+
+We register a global NewMessage(incoming=True) handler once; when the bot
+posts a catch message with rarity + inline buttons, we click immediately
+(via raw GetBotCallbackAnswerRequest) BEFORE the fish escapes.
+"""
 import asyncio
 
 RARITY_MARKERS = (
-    ("legendary", ("افسانه‌ای", "افسانه ای", "افسانه‌ ئی", "افسانه")),
+    ("legendary", ("افسانه‌ای", "افسانه ای", "افسانه", "اسطوره‌ای", "اسطوره ای")),
     ("epic", ("حماسی",)),
     ("rare", ("کمیاب", "کمیاب‌")),
     ("common", ("معمولی", "عادی")),
@@ -25,18 +30,6 @@ def detect_rarity(text):
     return None
 
 
-def _find_button(markup, keywords):
-    if not markup:
-        return None
-    for row in markup.rows:
-        for button in row.buttons:
-            label = getattr(button, "text", "") or ""
-            for kw in keywords:
-                if kw in label:
-                    return button
-    return None
-
-
 def _all_buttons(markup):
     out = []
     if not markup:
@@ -47,95 +40,76 @@ def _all_buttons(markup):
     return out
 
 
-async def _find_bot_reply(client, chat_id, sent_msg_id):
-    """Find the message that replies to our 'ماهی' message."""
-    try:
-        messages = await client.get_messages(chat_id, limit=8)
-    except Exception as exc:
-        print(f"[FISH] fetch error: {exc}")
+def _pick_button(markup, mode):
+    """Find the button matching the user's mode. Fallback: any non-close button."""
+    if not markup:
         return None
-    for m in messages or []:
-        if getattr(m, "reply_to_msg_id", None) == sent_msg_id:
-            return m
-    # Fallback: any recent bot message that has a rarity marker AND a reply_markup with buttons
-    for m in messages or []:
-        txt = getattr(m, "text", "") or ""
-        markup = getattr(m, "reply_markup", None)
-        if markup and detect_rarity(txt):
-            return m
-    for m in messages or []:
-        txt = getattr(m, "text", "") or ""
-        if ("سطح" in txt) and (("ماهی" in txt) or ("گرفتی" in txt)):
-            return m
+    kws = MODE_KEYWORDS.get(mode, MODE_KEYWORDS["sell"])
+    # 1) Exact keyword match
+    for row in markup.rows:
+        for b in row.buttons:
+            lbl = getattr(b, "text", "") or ""
+            for kw in kws:
+                if kw in lbl:
+                    return b
+    # 2) Fallback: any button whose label is not 'بستن' / 'close' / 'انصراف'
+    for row in markup.rows:
+        for b in row.buttons:
+            lbl = getattr(b, "text", "") or ""
+            if lbl and "بستن" not in lbl and "close" not in lbl.lower() and "انصراف" not in lbl:
+                return b
     return None
 
 
+async def _click_button(client, peer, msg_id, button):
+    """Use raw GetBotCallbackAnswerRequest for maximum compatibility with selfbots."""
+    data = getattr(button, "data", None)
+    if data is None:
+        try:
+            await button.click()
+            return True
+        except Exception as e:
+            print(f"[FISH] fallback click failed: {e}")
+            return False
+    try:
+        from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
+        await client(GetBotCallbackAnswerRequest(peer=peer, msg_id=msg_id, data=data))
+        return True
+    except Exception as e:
+        print(f"[FISH] GetBotCallbackAnswer failed: {type(e).__name__}: {e}")
+        return False
+
+
 async def handle_catch(client, chat_id, sent_msg_id, modes, timeout=40):
-    waited = 0.0
-    while waited < timeout:
-        await asyncio.sleep(0.7)
-        waited += 0.7
+    """Kept for compatibility — the event-driven handler does the real work.
+    This simply returns after a short wait so callers don't hang."""
+    await asyncio.sleep(2)
+    return {"rarity": None, "mode": None, "action": "event-driven"}
 
-        bot_msg = await _find_bot_reply(client, chat_id, sent_msg_id)
-        if not bot_msg:
-            continue
 
-        text = getattr(bot_msg, "text", "") or ""
-        rarity = detect_rarity(text)
-        markup = getattr(bot_msg, "reply_markup", None)
-
-        # If the message still has action buttons, act FAST — even if a later line says 'فرار کرد'
-        # (meowie appends 'فرار کرد' only AFTER timeout, but if we click quickly we win)
-        if rarity and markup:
-            pass  # proceed to click immediately
-        elif "فرار کرد" in text and not markup:
-            print(f"[FISH] escaped: {text.splitlines()[0] if text else ''}")
-            return {"rarity": None, "mode": None, "action": "escaped"}
-        elif not rarity:
-            continue
-
-        mode = (modes or {}).get(rarity, "sell")
-        keywords = MODE_KEYWORDS.get(mode, MODE_KEYWORDS["sell"])
-
-        clicked = False
-        print(f"[FISH] buttons available: {_all_buttons(getattr(bot_msg, 'reply_markup', None))}")
-        for attempt in range(3):
-            button = _find_button(getattr(bot_msg, "reply_markup", None), keywords)
-            if not button:
-                # fallback: try any button whose label is not 'بستن' / 'close'
-                mk = getattr(bot_msg, "reply_markup", None)
-                if mk:
-                    for row in mk.rows:
-                        for b in row.buttons:
-                            lbl = getattr(b, "text", "") or ""
-                            if lbl and "بستن" not in lbl and "close" not in lbl.lower():
-                                button = b
-                                break
-                        if button:
-                            break
-            if not button:
-                break
-            try:
-                cb_data = getattr(button, "data", None)
-                if cb_data is not None:
-                    from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
-                    await client(GetBotCallbackAnswerRequest(
-                        peer=chat_id, msg_id=bot_msg.id, data=cb_data,
-                    ))
-                else:
-                    await button.click()
-                clicked = True
-                print(f"[FISH] {rarity}/{mode} clicked (try {attempt + 1})")
-            except Exception as exc:
-                print(f"[FISH] click error: {exc}")
-            await asyncio.sleep(0.25)
-            try:
-                bot_msg = await client.get_messages(chat_id, ids=bot_msg.id)
-                if not bot_msg or not getattr(bot_msg, "reply_markup", None):
-                    break
-            except Exception:
-                break
-
-        return {"rarity": rarity, "mode": mode, "action": "clicked" if clicked else "no_button"}
-
-    return {"rarity": None, "mode": None, "action": "timeout"}
+async def try_click_now(client, chat_id, msg, owner_id=None):
+    """Click the correct mode button on a catch message RIGHT NOW. Returns True if clicked."""
+    text = getattr(msg, "text", "") or ""
+    markup = getattr(msg, "reply_markup", None)
+    rarity = detect_rarity(text)
+    if not rarity or not markup:
+        return False
+    # Load per-user fish modes
+    modes = {}
+    try:
+        from bot.database import get_fish_modes
+        if owner_id is None:
+            me = await client.get_me()
+            owner_id = me.id
+        modes = await get_fish_modes(owner_id)
+    except Exception:
+        pass
+    mode = (modes or {}).get(rarity, "sell")
+    print(f"[FISH] catch detected rarity={rarity} mode={mode} buttons={_all_buttons(markup)}")
+    btn = _pick_button(markup, mode)
+    if not btn:
+        print("[FISH] no button matched!")
+        return False
+    ok = await _click_button(client, chat_id, msg.id, btn)
+    print(f"[FISH] click {'OK' if ok else 'FAILED'} on '{getattr(btn, 'text', '?')}' for {rarity}/{mode}")
+    return ok

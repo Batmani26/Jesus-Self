@@ -31,19 +31,12 @@ async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None):
                 await asyncio.sleep(delay)
             while not client.is_connected():
                 await asyncio.sleep(2)
-            sent = await client.send_message(chat_id, "ماهی")
-            print(f"[FISH] sent ماهی to {chat_id}")
             try:
-                from bot.database import get_fish_modes
-                modes = await get_fish_modes(owner_id)
-            except Exception:
-                modes = {}
-            try:
-                from selfbot.plugins.fish_actions import handle_catch
-                result = await handle_catch(client, chat_id, sent.id, modes)
-                print(f"[FISH] result {result}")
+                await client.send_message(chat_id, "ماهی")
+                print(f"[FISH] sent ماهی to {chat_id}")
             except Exception as exc:
-                print(f"[FISH] action error: {exc}")
+                print(f"[FISH] send error: {exc}")
+            # Clicking is handled instantly by the incoming-message event handler
             next_send += cooldown
             if next_send < loop.time():
                 next_send = loop.time() + cooldown
@@ -55,6 +48,28 @@ async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None):
 
 def register(client) -> None:
     p = config.PREFIX
+
+    # EVENT-DRIVEN click: fires the moment Meowie posts a catch message (has rarity + buttons).
+    @client.on(events.NewMessage(incoming=True))
+    async def on_meowie_catch(event: events.NewMessage.Event) -> None:
+        try:
+            text = event.raw_text or ""
+            if not text:
+                return
+            # Quick checks to avoid doing work on every message
+            if "گرفتی" not in text and "ماهی" not in text and "سطح" not in text:
+                return
+            markup = getattr(event.message, "reply_markup", None)
+            if not markup:
+                return
+            try:
+                from selfbot.plugins.fish_actions import try_click_now
+            except Exception:
+                return
+            me = await client.get_me()
+            await try_click_now(client, event.chat_id, event.message, owner_id=me.id)
+        except Exception as exc:
+            print(f"[FISH] on_meowie_catch error: {exc}")
 
     @client.on(events.NewMessage(outgoing=True, pattern="^" + re.escape(p) + "تنظیم زمان ماهیگیری (\\d+:\\d+)$"))
     async def set_fishing_time(event: events.NewMessage.Event) -> None:
