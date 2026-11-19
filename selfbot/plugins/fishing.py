@@ -6,7 +6,7 @@ from selfbot.config import config
 
 FISHING_TASKS = {}
 
-async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None):
+async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None, immediate=False):
     if not interval_str:
         return
     try:
@@ -18,8 +18,8 @@ async def fishing_loop_wrapper(client, chat_id, interval_str, user_id=None):
     except Exception:
         return
     loop = asyncio.get_event_loop()
-    # Respect the user's chosen interval from the very first send
-    next_send = loop.time() + cooldown
+    # First send: immediate (right after .ماهیگیری روشن) or wait full cooldown
+    next_send = loop.time() if immediate else loop.time() + cooldown
     while True:
         try:
             if user_id is None:
@@ -106,7 +106,7 @@ def register(client) -> None:
             return
             
         await event.edit(f"✅ شروع ماهیگیری در چت **{target['chat_title']}** با تایم **{interval}**...")
-        FISHING_TASKS[chat_id] = asyncio.create_task(fishing_loop_wrapper(client, chat_id, interval, me.id))
+        FISHING_TASKS[chat_id] = asyncio.create_task(fishing_loop_wrapper(client, chat_id, interval, me.id, immediate=True))
         await set_fishing_active(me.id, 1)
 
     @client.on(events.NewMessage(outgoing=True, pattern="^" + re.escape(p) + "ماهیگیری خاموش$"))

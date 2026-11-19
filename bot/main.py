@@ -592,10 +592,12 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         info_text = (
             "🌐 <b>مترجم هوشمند (تشخیص زبان)</b>\n\n"
             f"وضعیت: <b>{st}</b>\n\n"
-            "<blockquote>متن انگلیسی یا روسی را بفرست، خودکار تشخیص می‌دهد و به فارسی ترجمه می‌کند.</blockquote>\n\n"
+            "<blockquote>متن انگلیسی بفرست → به فارسی ترجمه می‌شود.\n"
+            "متن فارسی بفرست → به انگلیسی ترجمه می‌شود.\n"
+            "روی ریپلای هم کار می‌کند و پیام خودت را ویرایش می‌کند.</blockquote>\n\n"
             "<b>دستور:</b>\n"
             "<code>.ترجمه Hello World</code>\n"
-            "<code>.ترجمه Привет мир</code>\n\n"
+            "<code>.ترجمه سلام دنیا</code>\n\n"
             "👇 دکمه پایین برای روشن/خاموش کردن:"
         )
         btn = "🔴 خاموش کن" if TRANS_ENABLED.get("on", True) else "🟢 روشن کن"
@@ -615,18 +617,66 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         st = "🟢 روشن" if TRANS_ENABLED["on"] else "🔴 خاموش"
         btn = "🔴 خاموش کن" if TRANS_ENABLED["on"] else "🟢 روشن کن"
         info_text = (
-            "🌐 <b>مترجم هوشمند (تشخیص زبان)</b>\n\n"
+            "🌐 <b>مترجم هوشمند</b>\n\n"
             f"وضعیت: <b>{st}</b>\n\n"
-            "<blockquote>متن انگلیسی یا روسی را بفرست، خودکار تشخیص می‌دهد و به فارسی ترجمه می‌کند.</blockquote>\n\n"
+            "<blockquote>متن انگلیسی بفرست → فارسی.\n"
+            "متن فارسی بفرست → انگلیسی.</blockquote>\n\n"
             "<b>دستور:</b>\n"
             "<code>.ترجمه Hello World</code>\n"
-            "<code>.ترجمه Привет мир</code>\n\n"
+            "<code>.ترجمه سلام دنیا</code>\n\n"
             "👇 دکمه پایین برای روشن/خاموش کردن:"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text=btn, callback_data="tog_translate")],
             [InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")]
         ])
+        try:
+            await _edit_panel(callback, info_text, kb)
+            await callback.answer()
+        except Exception as e:
+            await callback.answer(f"خطا: {e}", show_alert=True)
+        return
+
+    if data_str == "tool_enemies_info" or data_str.startswith("enemy_del:"):
+        from bot.database import get_enemies, remove_enemy
+        if data_str.startswith("enemy_del:"):
+            try:
+                eid = int(data_str.split(":", 1)[1])
+                await remove_enemy(callback.from_user.id, eid)
+                await callback.answer("✅ دشمن از لیست حذف شد")
+            except Exception as exc:
+                await callback.answer(f"خطا: {exc}", show_alert=True)
+        try:
+            enemies = await get_enemies(callback.from_user.id)
+        except Exception:
+            enemies = []
+        lines = [
+            "☠️ <b>بخش دشمنان</b>",
+            "",
+            "<blockquote>هر شخصی که به لیست دشمنان اضافه کنی، با دیدن هر پیام او در پیوی یا گروه، سلف یک فحش از لیست فحش‌های تو به او می‌دهد.</blockquote>",
+            "",
+            "<b>📖 آموزش:</b>",
+            "1️⃣ روی پیام شخص ریپلای کن و بزن <code>.تنظیم دشمن</code>",
+            "💡 یا بدون ریپلای: <code>.تنظیم دشمن @username</code> یا <code>.تنظیم دشمن 123456789</code>",
+            "2️⃣ فحش دلخواه اضافه کن: <code>.افزودن فحش [متن]</code>",
+            "3️⃣ باقی‌اش را به ما بسپارید.",
+            "",
+            "<b>✏️ حذف دشمن:</b> با <code>.حذف دشمن @user</code> یا ریپلای + <code>.حذف دشمن</code>",
+            "<b>🧹 پاکسازی فحش‌ها:</b> <code>.پاکسازی لیست فحش</code>",
+            "",
+        ]
+        if enemies:
+            lines.append(f"<b>👥 لیست دشمنان شما ({len(enemies)}):</b>")
+        else:
+            lines.append("<b>👥 لیست دشمنان شما:</b> هنوز خالی است.")
+        kb_rows = [[InlineKeyboardButton(text="📜 فحش‌های من", callback_data="curse_list")]]
+        for e in enemies[:30]:
+            nm = e["enemy_name"] or "نامشخص"
+            kb_rows.append([InlineKeyboardButton(text=f"🗑 {nm} ({e['enemy_id']})", callback_data=f"enemy_del:{e['enemy_id']}")])
+        kb_rows.append([InlineKeyboardButton(text="🔄 بروزرسانی", callback_data="tool_enemies_info")])
+        kb_rows.append([InlineKeyboardButton(text="🔙 بازگشت", callback_data="cat_tools")])
+        kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
+        info_text = "\n".join(lines)
         try:
             await _edit_panel(callback, info_text, kb)
             await callback.answer()

@@ -21,6 +21,8 @@ def register(client) -> None:
     async def _own_id():
         if _me["id"] is None:
             try:
+                if not client.is_connected():
+                    return None
                 me = await client.get_me()
                 _me["id"] = me.id
             except Exception:
@@ -29,6 +31,8 @@ def register(client) -> None:
 
     async def _get(col, default=0):
         uid = await _own_id()
+        if not uid:
+            return default
         try:
             from bot.database import get_setting
             return await get_setting(uid, col, default)
@@ -59,28 +63,37 @@ def register(client) -> None:
 
 
     async def _online_loop():
+        """Hammer UpdateStatus every 8s so the account never goes offline."""
         while True:
             try:
                 if await _get("always_online"):
-                    await client(functions.account.UpdateStatusRequest(offline=False))
+                    try:
+                        await client(functions.account.UpdateStatusRequest(offline=False))
+                    except Exception:
+                        pass
             except Exception:
                 pass
-            await asyncio.sleep(25)
+            await asyncio.sleep(8)
 
     async def _typing_loop():
+        """Continuously broadcast typing to all group dialogs."""
         while True:
             try:
                 if await _get("always_typing"):
-                    async for dialog in client.iter_dialogs(limit=15):
+                    # Collect target chats once per cycle
+                    targets = []
+                    async for dialog in client.iter_dialogs(limit=25):
                         if dialog.is_group or dialog.is_channel:
-                            try:
-                                await client(functions.messages.SetTypingRequest(peer=dialog.id, action=SendMessageTypingAction()))
-                            except Exception:
-                                pass
-                            await asyncio.sleep(0.5)
+                            targets.append(dialog.id)
+                    for tid in targets:
+                        try:
+                            await client(functions.messages.SetTypingRequest(peer=tid, action=SendMessageTypingAction()))
+                        except Exception:
+                            pass
+                        await asyncio.sleep(0.3)
             except Exception:
                 pass
-            await asyncio.sleep(45)
+            await asyncio.sleep(20)
 
     asyncio.create_task(_online_loop())
     asyncio.create_task(_typing_loop())

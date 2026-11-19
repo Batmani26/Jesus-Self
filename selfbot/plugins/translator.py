@@ -7,6 +7,7 @@ Edits the user's own message in-place.
 """
 import re
 import json
+import asyncio
 import urllib.parse
 import aiohttp
 from telethon import events
@@ -51,12 +52,12 @@ async def _gtranslate(text: str, target_lang: str) -> str:
 
 
 async def _mymemory(text: str, target_lang: str) -> str:
-    """Fallback: MyMemory free API (limited but works without key)."""
+    """Fallback: MyMemory free API."""
     try:
         q = urllib.parse.quote(text)
-        pair = f"fa|en" if target_lang == "en" else "en|fa"
+        pair = "fa|en" if target_lang == "en" else "en|fa"
         url = f"https://api.mymemory.translated.net/get?q={q}&langpair={pair}"
-        timeout = aiohttp.ClientTimeout(total=15)
+        timeout = aiohttp.ClientTimeout(total=10)
         async with aiohttp.ClientSession(timeout=timeout) as s:
             async with s.get(url) as r:
                 if r.status != 200:
@@ -67,11 +68,70 @@ async def _mymemory(text: str, target_lang: str) -> str:
         return ""
 
 
+def _urllib_gtranslate_sync(text: str, target_lang: str) -> str:
+    """Synchronous fallback via urllib (no aiohttp dependency)."""
+    try:
+        import urllib.request
+        q = urllib.parse.quote(text)
+        url = (
+            "https://translate.googleapis.com/translate_a/single"
+            f"?client=gtx&sl=auto&tl={target_lang}&dt=t&q={q}"
+        )
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=12) as r:
+            raw = r.read().decode("utf-8", errors="ignore")
+        import json as _j
+        data = _j.loads(raw)
+        out = []
+        for chunk in data[0] or []:
+            if chunk and chunk[0]:
+                out.append(chunk[0])
+        return "".join(out).strip()
+    except Exception:
+        return ""
+
+
+async def _libretranslate(text: str, target_lang: str) -> str:
+    """Fallback: LibreTranslate free instance."""
+    try:
+        url = "https://libretranslate.com/translate"
+        payload = {"q": text, "source": "auto", "target": target_lang, "format": "text"}
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with aiohttp.ClientSession(timeout=timeout) as s:
+            async with s.post(url, json=payload) as r:
+                if r.status != 200:
+                    return ""
+                data = await r.json(content_type=None)
+                return (data.get("translatedText") or "").strip()
+    except Exception:
+        return ""
+
+
 async def _translate(text: str, target_lang: str) -> str:
-    r = await _gtranslate(text, target_lang)
-    if r:
-        return r
-    return await _mymemory(text, target_lang)
+    # Race both endpoints in parallel, first non-empty wins (fast)
+    tasks = [
+        asyncio.create_task(_gtranslate(text, target_lang)),
+        asyncio.create_task(_mymemory(text, target_lang)),
+    ]
+    for coro in asyncio.as_completed(tasks):
+        try:
+            r = await coro
+        except Exception:
+            r = ""
+        if r:
+            for t in tasks:
+                if not t.done():
+                    t.cancel()
+            return r
+    # Final fallback: synchronous urllib via thread (bypasses any aiohttp issues)
+    try:
+        r = await asyncio.to_thread(_urllib_gtranslate_sync, text, target_lang)
+        if r:
+            return r
+    except Exception:
+        pass
+    r = await _libretranslate(text, target_lang)
+    return r
 
 
 def register(client) -> None:
