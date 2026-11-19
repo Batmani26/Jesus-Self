@@ -232,50 +232,44 @@ def register(client) -> None:
                 cnt = max(1, min(5000, int(n)))
                 ids = []
                 try:
-                    entity = await client.get_entity(chat_id)
+                    entity = await event.get_chat()
                 except Exception:
-                    entity = chat_id
+                    try:
+                        entity = await client.get_entity(chat_id)
+                    except Exception:
+                        entity = chat_id
+                skip_ids = {getattr(event.message, "id", None)}
                 if topic_id:
-                    # Reliable topic-scoped fetch via GetReplies pagination
-                    from telethon.tl.functions.messages import GetRepliesRequest
-                    offset_id = 0
-                    while len(ids) < cnt:
-                        try:
-                            res = await client(GetRepliesRequest(
-                                peer=entity, msg_id=topic_id, offset_id=offset_id,
-                                offset_date=None, add_offset=0, limit=min(100, cnt - len(ids)),
-                                max_id=0, min_id=0, hash=0,
-                            ))
-                        except Exception as exc:
-                            emsg = str(exc).lower()
-                            if "flood" in emsg or "wait" in emsg:
-                                import re as _r
-                                mm = _r.search(r"(\d+)", str(exc))
-                                await asyncio.sleep((int(mm.group(1)) if mm else 15) + 2)
-                                continue
-                            log.warning(f"GetReplies (delete) failed: {exc}")
+                    # Primary: scan all messages, filter strictly by reply_to_top_id == topic_id
+                    async for msg in client.iter_messages(entity):
+                        mid = getattr(msg, "id", None)
+                        if not mid or mid in skip_ids:
+                            continue
+                        r = getattr(msg, "reply_to", None)
+                        if r is None:
+                            continue
+                        mt = getattr(r, "reply_to_top_id", None)
+                        if mt is None and getattr(r, "forum_topic", False):
+                            mt = getattr(r, "reply_to_msg_id", None)
+                        if mt != topic_id:
+                            continue
+                        ids.append(mid)
+                        if len(ids) >= cnt:
                             break
-                        msgs = getattr(res, "messages", []) or []
-                        if not msgs:
-                            break
-                        for mm2 in msgs:
-                            if getattr(mm2, "id", None):
-                                ids.append(mm2.id)
-                                if len(ids) >= cnt:
-                                    break
-                        offset_id = msgs[-1].id
-                        if len(msgs) < 100:
-                            break
-                        await asyncio.sleep(0.1)
+                    log.info(f"[DEL] topic={topic_id} collected={len(ids)} (want {cnt})")
                 else:
                     # General: only messages not in any sub-topic
-                    async for msg in client.iter_messages(entity, limit=cnt * 3):
+                    async for msg in client.iter_messages(entity):
+                        mid = getattr(msg, "id", None)
+                        if not mid or mid in skip_ids:
+                            continue
                         r = getattr(msg, "reply_to", None)
                         if r is not None and getattr(r, "forum_topic", False):
                             continue
-                        ids.append(msg.id)
+                        ids.append(mid)
                         if len(ids) >= cnt:
                             break
+                    log.info(f"[DEL] general collected={len(ids)} (want {cnt})")
                 # Delete in safe chunks of 100
                 if ids:
                     for i in range(0, len(ids), 100):
