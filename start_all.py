@@ -74,6 +74,16 @@ async def start_web_server_guarded():
         await asyncio.sleep(3600)
 
 async def run_all():
+    import os as _os
+    # ROLE controls what this instance does.
+    #   "all"      → management bot + admin selfbot + user selfbots + billing (single-host setup)
+    #   "manage"   → management bot + admin selfbot + billing (no user selfbots)
+    #   "selfonly" → ONLY user selfbots (no aiogram polling, no billing) — for a 2nd host
+    ROLE = (_os.getenv("ROLE", "all") or "all").strip().lower()
+    if ROLE not in ("all", "manage", "selfonly"):
+        ROLE = "all"
+    log.info(f"Host role: {ROLE}")
+
     log.info("Connecting to database...")
     await init_db()
 
@@ -87,11 +97,14 @@ async def run_all():
         log.warning(f"Auto-proxy detection failed: {e}")
 
     log.info("Starting Management Bot and Selfbot...")
-    try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        log.info("Webhook cleared, pending updates dropped")
-    except Exception as exc:
-        log.warning(f"Could not clear webhook: {exc}")
+    if ROLE in ("all", "manage"):
+        try:
+            await bot.delete_webhook(drop_pending_updates=True)
+            log.info("Webhook cleared, pending updates dropped")
+        except Exception as exc:
+            log.warning(f"Could not clear webhook: {exc}")
+    else:
+        log.info("selfonly role: skipping aiogram webhook clear / polling / billing")
     
     async def safe_loop(loop_func, name):
         while True:
@@ -132,15 +145,20 @@ async def run_all():
                 log.error(f"Polling crashed: {e}. Restarting in 10s...", exc_info=True)
                 await asyncio.sleep(10)
 
-    await asyncio.gather(
-        polling_forever(),
+    tasks = [
         start_web_server_guarded(),
         safe_loop(manager_loop, "manager_loop"),
-        safe_loop(osint_processor, "osint_processor"),
-        safe_loop(billing_loop, "billing_loop"),
-        safe_loop(panel_updater_loop, "panel_updater_loop"),
-        return_exceptions=True
-    )
+    ]
+    if ROLE in ("all", "manage"):
+        tasks.append(polling_forever())
+        tasks.append(safe_loop(panel_updater_loop, "panel_updater_loop"))
+        tasks.append(safe_loop(billing_loop, "billing_loop"))
+        # osint uses the admin client; only meaningful on the management host
+        tasks.append(safe_loop(osint_processor, "osint_processor"))
+    else:
+        log.info("selfonly role: skipping polling/billing/panel/osint loops")
+
+    await asyncio.gather(*tasks, return_exceptions=True)
     # Top-level keepalive (should never reach here if gather works)
     while True:
         await asyncio.sleep(3600)
