@@ -139,14 +139,34 @@ async def stop_user_client(user_id):
 async def manager_loop():
     from bot.main import ADMIN_ID
     from selfbot.config import config
-    
+    import os as _os
+    # Sharding: split user selfbots across hosts to avoid double-login and share load.
+    #   SHARD=0, SHARD_TOTAL=2 → this host handles users with (user_id % 2 == 0)
+    #   SHARD=1, SHARD_TOTAL=2 → odd user ids
+    try:
+        SHARD = int(_os.getenv("SHARD", "0"))
+        SHARD_TOTAL = max(1, int(_os.getenv("SHARD_TOTAL", "1")))
+    except Exception:
+        SHARD, SHARD_TOTAL = 0, 1
+    if SHARD < 0 or SHARD >= SHARD_TOTAL:
+        SHARD = 0
+    log.info(f"manager_loop shard={SHARD}/{SHARD_TOTAL}")
+
+    def _owns(uid: int) -> bool:
+        if SHARD_TOTAL <= 1:
+            return True
+        return (abs(int(uid)) % SHARD_TOTAL) == SHARD
+
     while True:
         try:
-            # 1. Always ensure admin client is connected
-            if not config.SESSION_STRING:
+            # 1. Always ensure admin client is connected (only on the management host)
+            role = (_os.getenv("ROLE", "all") or "all").strip().lower()
+            if role == "selfonly":
+                pass  # self-only host: skip admin client
+            elif not config.SESSION_STRING:
                 # Prevent infinite 'Please enter your phone' loop when env missing
                 if not getattr(manager_loop, "_admin_warned", False):
-                    log.error("SESSION_STRING is missing in Render env → admin selfbot cannot start (will retry silently)")
+                    log.error("SESSION_STRING is missing → admin selfbot cannot start (will retry silently)")
                     manager_loop._admin_warned = True  # type: ignore[attr-defined]
             else:
                 admin_client = ACTIVE_CLIENTS.get(ADMIN_ID)
@@ -161,10 +181,12 @@ async def manager_loop():
             active_ids = {u['user_id'] for u in users}
             active_ids.add(ADMIN_ID)
             
-            # 3. Start missing OR disconnected user clients
+            # 3. Start missing OR disconnected user clients (only users owned by this shard)
             for u in users:
                 uid = u['user_id']
                 if uid == ADMIN_ID:
+                    continue
+                if not _owns(uid):
                     continue
                 existing = ACTIVE_CLIENTS.get(uid)
                 if existing is None or not existing.is_connected():
