@@ -31,8 +31,10 @@ if [ -f ".env" ]; then
   source .env
   set +a
 else
-  echo "[STARTUP] WARNING: .env file not found. Using environment variables from the panel instead."
-  echo "[STARTUP] Make sure ROLE, SHARD, DATABASE_URL, ENCRYPTION_KEY, BOT_TOKEN, API_ID, API_HASH are set in the panel's Environment Variables section."
+  echo "[STARTUP] WARNING: .env file not found!"
+  echo "[STARTUP] Please create a .env file in the 'app' folder with your secrets."
+  echo "[STARTUP] You can copy the template from .env.example."
+  exit 1
 fi
 
 echo "[STARTUP] Installing requirements..."
