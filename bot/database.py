@@ -43,7 +43,17 @@ async def init_db():
     async with _init_lock:
         if pool is not None:
             return
-        pool = await asyncpg.create_pool(DB_URL, min_size=2, max_size=20, statement_cache_size=0, command_timeout=15)
+        # Memory-tuned pool: lower footprint for 512MB hosts (Render free / Enzonic free).
+        # Override with DB_POOL_MIN / DB_POOL_MAX env if you need more concurrency.
+        _pmin = int(os.getenv("DB_POOL_MIN", "1"))
+        _pmax = int(os.getenv("DB_POOL_MAX", "6"))
+        pool = await asyncpg.create_pool(
+            DB_URL,
+            min_size=_pmin,
+            max_size=_pmax,
+            statement_cache_size=0,
+            command_timeout=15,
+        )
         async with pool.acquire() as conn:
             await conn.execute('''
                 CREATE TABLE IF NOT EXISTS users (
