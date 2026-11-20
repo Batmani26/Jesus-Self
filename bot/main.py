@@ -237,8 +237,9 @@ async def process_inline_panel_callback(callback: CallbackQuery):
         info_text = (
             "🎰 <b>بخش تقلب کازینو</b>\n\n"
             "<blockquote>با استفاده از دستور زیر می‌توانید کازینو تلگرام را مجبور کنید تا به بیشترین امتیاز (جکپات) برسد. کافیست دستور را در هر چتی ارسال کنید.</blockquote>\n\n"
-            "<b>دستور:</b>\n"
-            "<code>.کازینو</code>\n\n"
+            "<b>دستورات:</b>\n"
+            "<code>.کازینو</code> — اسپین معمولی تا امتیاز بالا\n"
+            "<code>.کازینو فلک جک</code> — اسپین با سرعت فوق‌العاده بالا تا رسیدن به سه ۷ هم‌سان (جک‌پات) 🎉\n\n"
             "👇 برای کپی، روی دستور کلیک کنید."
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
