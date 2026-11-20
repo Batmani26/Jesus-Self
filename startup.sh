@@ -12,15 +12,15 @@ fi
 
 cd "$APP_DIR"
 
-if [ ! -f ".env" ]; then
-  echo "[STARTUP] ERROR: .env file not found in app folder. Please create it."
-  exit 1
+if [ -f ".env" ]; then
+  echo "[STARTUP] Loading env vars from .env..."
+  set -a
+  source .env
+  set +a
+else
+  echo "[STARTUP] WARNING: .env file not found. Using environment variables from the panel instead."
+  echo "[STARTUP] Make sure ROLE, SHARD, DATABASE_URL, ENCRYPTION_KEY, BOT_TOKEN, API_ID, API_HASH are set in the panel's Environment Variables section."
 fi
-
-echo "[STARTUP] Loading env vars from .env..."
-set -a
-source .env
-set +a
 
 echo "[STARTUP] Installing requirements..."
 pip install --no-cache-dir -r requirements.txt
