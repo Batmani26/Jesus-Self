@@ -9,7 +9,7 @@ from telethon import events
 from telethon.tl.types import InputMediaDice
 from selfbot.config import config
 
-JACKPOT_VALUE = 64  # three 7️⃣ (Telegram casino jackpot)
+JACKPOT_VALUE = 43  # any 3 identical symbols (Telegram casino values 43..64 = triples)
 HIGH_VALUE = 43     # high score threshold for classic .کازینو
 
 
@@ -33,7 +33,7 @@ def register(client) -> None:
                 print(f"Casino error: {e}")
                 await asyncio.sleep(0.1)
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}کازینو فلک جک$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}کازینو جک پات$"))
     async def casino_jackpot_cmd(event: events.NewMessage.Event) -> None:
         """Max-speed parallel casino spam until jackpot (three 7s)."""
         chat_id = event.chat_id
@@ -102,7 +102,7 @@ def register(client) -> None:
             if stop.is_set() and winner_msg["msg"] is not None:
                 await client.send_message(
                     chat_id,
-                    f"🎉 <b>فلک جک! سه ۷ هم‌سان!</b>\n"
+                    f"🎉 <b>جک‌پات! سه نماد هم‌سان!</b>\n"
                     f"🎰 تلاش‌ها: <code>{casts['n']}</code>\n"
                     f"🛡 Jesus Self",
                     parse_mode="html",
