@@ -5,9 +5,22 @@ set -e
 APP_DIR="/home/container/app"
 REPO="https://github.com/Batmani26/Jesus-Self.git"
 
+# Ensure we are in the correct directory
+cd /home/container
+
 if [ ! -d "$APP_DIR" ]; then
   echo "[STARTUP] Cloning repository..."
-  git clone "$REPO" "$APP_DIR"
+  if command -v git >/dev/null 2>&1; then
+    git clone "$REPO" "$APP_DIR"
+  else
+    echo "[STARTUP] ERROR: git not found. Please clone manually or upload files."
+    exit 1
+  fi
+fi
+
+if [ ! -d "$APP_DIR" ]; then
+  echo "[STARTUP] ERROR: Could not create app directory. Check permissions."
+  exit 1
 fi
 
 cd "$APP_DIR"
