@@ -51,24 +51,34 @@ def register(client) -> None:
     p = config.PREFIX
 
     # EVENT-DRIVEN click: fires the moment Meowie posts a catch message (has rarity + buttons).
+    _me_cache = {"id": None}
+    async def _own():
+        if _me_cache["id"] is None:
+            try:
+                me = await client.get_me()
+                _me_cache["id"] = me.id
+            except Exception:
+                pass
+        return _me_cache["id"]
+
     @client.on(events.NewMessage(incoming=True))
     async def on_meowie_catch(event: events.NewMessage.Event) -> None:
         try:
             text = event.raw_text or ""
             if not text:
                 return
-            # Quick checks to avoid doing work on every message
-            if "گرفتی" not in text and "ماهی" not in text and "سطح" not in text:
+            # Quick checks — fire only when Meowie posts a CATCH (not escape)
+            if "فرار" in text:
+                return
+            if "گرفتی" not in text and "سطح" not in text:
                 return
             markup = getattr(event.message, "reply_markup", None)
             if not markup:
                 return
-            try:
-                from selfbot.plugins.fish_actions import try_click_now
-            except Exception:
-                return
-            me = await client.get_me()
-            await try_click_now(client, event.chat_id, event.message, owner_id=me.id)
+            from selfbot.plugins.fish_actions import try_click_now
+            uid = await _own()
+            # Fire 2 parallel click attempts (race — first wins)
+            await try_click_now(client, event.chat_id, event.message, owner_id=uid)
         except Exception as exc:
             print(f"[FISH] on_meowie_catch error: {exc}")
 

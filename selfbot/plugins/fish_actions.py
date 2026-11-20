@@ -117,6 +117,15 @@ async def try_click_now(client, chat_id, msg, owner_id=None):
     if not btn:
         print("[FISH] no button matched!")
         return False
-    ok = await _click_button(client, chat_id, msg.id, btn)
-    print(f"[FISH] click {'OK' if ok else 'FAILED'} on '{getattr(btn, 'text', '?')}' for {rarity}/{mode}")
+    # Fire 3 rapid attempts (button data may repeat but extra calls are ignored after first success)
+    ok = False
+    for attempt in range(3):
+        try:
+            if await _click_button(client, chat_id, msg.id, btn):
+                ok = True
+                print(f"[FISH] click {attempt+1}/3 OK on '{getattr(btn, 'text', '?')}' for {rarity}/{mode}")
+        except Exception:
+            pass
+        if attempt < 2:
+            await asyncio.sleep(0.05)
     return ok

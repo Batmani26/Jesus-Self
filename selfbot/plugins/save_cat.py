@@ -79,43 +79,22 @@ async def _try_rescue(client, chat_id, msg):
             return
 
         ok_any = False
+        cb_data = getattr(target, "data", None)
+        from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
+        # 3 rapid-fire clicks with ZERO re-fetch (fastest possible — race competitors)
         for attempt in range(3):
-            # Re-fetch fresh message so we click the CURRENT button (label/price may change)
-            cur_target = target
-            try:
-                fresh = await client.get_messages(chat_id, ids=msg.id)
-                if fresh and getattr(fresh, "reply_markup", None):
-                    for row in fresh.reply_markup.rows:
-                        for b in row.buttons:
-                            t = getattr(b, "text", "") or ""
-                            if any(k in t for k in _RESCUE_KEYWORDS):
-                                cur_target = b
-                                break
-                        else:
-                            continue
-                        break
-            except Exception:
-                pass
-            cb_data = getattr(cur_target, "data", None)
             try:
                 if cb_data:
-                    from telethon.tl.functions.messages import GetBotCallbackAnswerRequest
                     await client(GetBotCallbackAnswerRequest(peer=chat_id, msg_id=msg.id, data=cb_data))
                 else:
-                    await cur_target.click()
+                    await target.click()
                 ok_any = True
-                print(f"[SAVE CAT] click {attempt+1}/3 OK on '{getattr(cur_target,'text','?')}' in {chat_id}")
+                print(f"[SAVE CAT] rapid click {attempt+1}/3 OK in {chat_id}")
             except Exception as exc:
-                print(f"[SAVE CAT] click {attempt+1} failed: {type(exc).__name__}: {exc}")
-                # try button.click fallback if raw callback failed
-                try:
-                    await cur_target.click()
-                    ok_any = True
-                    print(f"[SAVE CAT] fallback click {attempt+1} OK in {chat_id}")
-                except Exception:
-                    pass
-            # tight gap
-            await asyncio.sleep(0.12)
+                print(f"[SAVE CAT] rapid click {attempt+1} failed: {type(exc).__name__}: {exc}")
+            # Very tight gap (Telegram rate-limits at ~30/sec, 0.04s is safe)
+            if attempt < 2:
+                await asyncio.sleep(0.04)
 
         if ok_any:
             _CLICKED.add(key)

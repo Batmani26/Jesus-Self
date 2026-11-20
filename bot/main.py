@@ -771,9 +771,25 @@ async def process_inline_panel_callback(callback: CallbackQuery):
     if data_str == "back_to_panel":
         from bot.database import get_yaqoot as _gy
         balance = await _gy(callback.from_user.id)
+        total_seconds = balance * 1800
+        _days = total_seconds // 86400
+        _hours = (total_seconds % 86400) // 3600
+        _mins = (total_seconds % 3600) // 60
+        _secs = total_seconds % 60
+        _now_utc = datetime.now(pytz.utc)
+        _now_t = _now_utc.astimezone(pytz.timezone('Asia/Tehran'))
+        _tstr = _now_t.strftime("%H:%M:%S")
+        _dm = _now_t.strftime("%Y/%m/%d")
+        try:
+            _ds = JalaliDate(_now_t).strftime("%Y/%m/%d")
+        except Exception:
+            _ds = _dm
         text = (
             "🤖 **پنل کنترل 𝑱𝑬𝑺𝑼𝑺 𝑺𝑬𝑳𝑭**\n\n"
-            f"💎 موجودی: **{balance}** یاقوت\n\n"
+            f"💎 موجودی: **{balance}** یاقوت\n"
+            f"⏳ معادل: **{_days}** روز، **{_hours}** ساعت، **{_mins}** دقیقه، **{_secs}** ثانیه\n"
+            f"⏰ ساعت: `{_tstr}`\n"
+            f"📅 تاریخ شمسی: `{_ds}` | میلادی: `{_dm}`\n\n"
             "✨ لطفاً یک قابلیت را از منوی زیر انتخاب کنید:"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
