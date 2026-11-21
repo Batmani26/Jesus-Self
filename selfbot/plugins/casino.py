@@ -78,10 +78,8 @@ def register(client) -> None:
 
         # Launch a rolling burst of concurrent casts until jackpot found.
         # Total attempt budget (safety), but concurrency keeps it extremely fast.
-        MAX_TOTAL = 5000
-        CONCURRENCY = 8
-        rounds = 0
-        while not stop.is_set() and casts["n"] < MAX_TOTAL:
+        CONCURRENCY = 20  # افزایش موازی‌سازی برای سرعت بیشتر
+        while not stop.is_set():
             rounds += 1
             batch = [asyncio.create_task(cast_one()) for _ in range(CONCURRENCY)]
             try:
@@ -97,21 +95,4 @@ def register(client) -> None:
             # tiny breather between bursts to avoid hammering
             await asyncio.sleep(0.02)
 
-        # Report result to the user
-        try:
-            if stop.is_set() and winner_msg["msg"] is not None:
-                await client.send_message(
-                    chat_id,
-                    f"🎉 <b>جک‌پات! سه نماد هم‌سان!</b>\n"
-                    f"🎰 تلاش‌ها: <code>{casts['n']}</code>\n"
-                    f"🛡 Jesus Self",
-                    parse_mode="html",
-                )
-            else:
-                await client.send_message(
-                    chat_id,
-                    f"⚠️ متأسفانه بعد از <code>{casts['n']}</code> تلاش به جک‌پات نرسیدیم.\n🛡 Jesus Self",
-                    parse_mode="html",
-                )
-        except Exception:
-            pass
+        # No final message needed — just stop when jackpot is found
