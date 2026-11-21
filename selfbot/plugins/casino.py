@@ -81,7 +81,6 @@ def register(client) -> None:
         # Total attempt budget (safety), but concurrency keeps it extremely fast.
         CONCURRENCY = 20  # افزایش موازی‌سازی برای سرعت بیشتر
         while not stop.is_set():
-            rounds += 1
             batch = [asyncio.create_task(cast_one()) for _ in range(CONCURRENCY)]
             try:
                 await asyncio.wait(batch, timeout=8)
