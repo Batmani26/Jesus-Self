@@ -69,7 +69,14 @@ def _pick_button(markup, mode):
 
 
 async def _click_button(client, peer, msg_id, button):
-    """Click robustly. Prefer raw callback (works with selfbots) then button.click()."""
+    """Click robustly. Try button.click() first (handles peer resolution), then raw callback."""
+    # اول button.click() را امتحان کن — خودش peer را حل می‌کند
+    try:
+        await button.click()
+        return True
+    except Exception as e:
+        print(f"[FISH] button.click() failed: {type(e).__name__}: {e}")
+    # اگر شکست خورد، raw callback را امتحان کن
     data = getattr(button, "data", None)
     if data:
         try:
@@ -78,12 +85,6 @@ async def _click_button(client, peer, msg_id, button):
             return True
         except Exception as e:
             print(f"[FISH] callback request failed: {type(e).__name__}: {e}")
-    # Fallback: click() handles URL buttons and newer refs
-    try:
-        await button.click()
-        return True
-    except Exception as e:
-        print(f"[FISH] button.click() failed: {type(e).__name__}: {e}")
     return False
 
 

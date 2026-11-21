@@ -207,8 +207,20 @@ def register(client) -> None:
         if not (SAVE_CAT_STATUS.get("active") or SAVE_CAT_STATUS.get("scanning")):
             return
         try:
-            if _has_rescue(event.message):
-                print(f"[SAVE CAT] rescue detected in {event.chat_id} msg_id={event.message.id}")
-                await _try_rescue(client, event.chat_id, event.message)
+            markup = getattr(event.message, "reply_markup", None)
+            if markup:
+                # چک کن آیا هر دکمه‌ای وجود دارد که شبیه rescue باشد
+                for row in markup.rows:
+                    for btn in row.buttons:
+                        btn_text = getattr(btn, "text", "") or ""
+                        if "نجات" in btn_text or "rescue" in btn_text.lower():
+                            print(f"[SAVE CAT] rescue detected in {event.chat_id} msg_id={event.message.id}")
+                            await _try_rescue(client, event.chat_id, event.message)
+                            return
+                # اگر دکمه‌ای با کلمه نجات نبود، اما پیام شامل گربه بود و دکمه‌ای داشت، باز هم rescue کن
+                body = (event.message.raw_text or "") or ""
+                if ("گربه" in body or "پیشی" in body) and markup.rows:
+                    print(f"[SAVE CAT] rescue (fallback) detected in {event.chat_id} msg_id={event.message.id}")
+                    await _try_rescue(client, event.chat_id, event.message)
         except Exception as exc:
             print(f"[SAVE CAT] handler error: {exc}")

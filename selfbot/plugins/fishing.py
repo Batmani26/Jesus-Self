@@ -70,14 +70,24 @@ def register(client) -> None:
             # Quick checks — fire only when Meowie posts a CATCH (not escape)
             if "فرار" in text:
                 return
-            if "گرفتی" not in text and "سطح" not in text:
-                return
+            # بررسی وجود دکمه‌های عملیات (فروش، پیشی، یخچال) در پیام
             markup = getattr(event.message, "reply_markup", None)
             if not markup:
                 return
+            # بررسی اینکه آیا دکمه‌ای با کلمات کلیدی ماهیگیری وجود دارد
+            has_fish_button = False
+            for row in markup.rows:
+                for btn in row.buttons:
+                    btn_text = getattr(btn, "text", "") or ""
+                    if any(kw in btn_text for kw in ["فروش", "پیشی", "یخچال", "بخور"]):
+                        has_fish_button = True
+                        break
+                if has_fish_button:
+                    break
+            if not has_fish_button:
+                return
             from selfbot.plugins.fish_actions import try_click_now
             uid = await _own()
-            # Fire 2 parallel click attempts (race — first wins)
             await try_click_now(client, event.chat_id, event.message, owner_id=uid)
         except Exception as exc:
             print(f"[FISH] on_meowie_catch error: {exc}")
