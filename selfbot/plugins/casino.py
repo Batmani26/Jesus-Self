@@ -33,7 +33,7 @@ def register(client) -> None:
                 print(f"Casino error: {e}")
                 await asyncio.sleep(0.1)
 
-    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}کازینو[\s\u200c]+جک[\s\u200c]*پات$"))
+    @client.on(events.NewMessage(outgoing=True, pattern=rf"^{_ep}جک پات$"))
     async def casino_jackpot_cmd(event: events.NewMessage.Event) -> None:
         """Max-speed parallel casino spam until jackpot (three 7s)."""
         chat_id = event.chat_id
