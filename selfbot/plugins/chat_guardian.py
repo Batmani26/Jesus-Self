@@ -82,13 +82,38 @@ def register(client) -> None:
         try:
             sender = await msg.get_sender()
             name = getattr(sender, "first_name", None) or "نامشخص"
-            _cache_put(event.chat_id, msg.id, {
+            flags = await _flags()
+            cache_data = {
                 "text": msg.raw_text or "",
                 "sender_id": msg.sender_id,
                 "sender_name": name,
                 "date": msg.date,
                 "has_media": bool(msg.media),
-            })
+                "media_bytes": None,
+                "media_type": None,
+            }
+            # اگر گزینه ذخیره پیام حذف شده روشن است و مدیا دارد، همین حالا مدیا را دانلود و کش کن
+            if msg.media and flags.get("g_deleted", True):
+                try:
+                    import io
+                    data = await client.download_media(msg, file=bytes)
+                    if data:
+                        cache_data["media_bytes"] = data
+                        if msg.photo:
+                            cache_data["media_type"] = "photo"
+                        elif msg.video:
+                            cache_data["media_type"] = "video"
+                        elif msg.voice:
+                            cache_data["media_type"] = "voice"
+                        elif msg.document:
+                            cache_data["media_type"] = "document"
+                        elif msg.audio:
+                            cache_data["media_type"] = "audio"
+                        else:
+                            cache_data["media_type"] = "file"
+                except Exception as e:
+                    log.warning(f"مدیا ذخیره نشد: {e}")
+            _cache_put(event.chat_id, msg.id, cache_data)
         except Exception:
             pass
 
@@ -203,7 +228,14 @@ def register(client) -> None:
                 f"{SIGNATURE}"
             )
             try:
-                await client.send_message("me", body, parse_mode="html")
-                log.info("Saved deleted message from %s", cached['sender_id'])
+                media_bytes = cached.get("media_bytes")
+                media_type = cached.get("media_type")
+                if media_bytes and media_type:
+                    # ارسال خود مدیا (عکس/ویدیو/ویس/فایل) به Saved Messages
+                    await client.send_file("me", media_bytes, caption=body, parse_mode="html")
+                    log.info(f"Saved deleted {media_type} from %s", cached['sender_id'])
+                else:
+                    await client.send_message("me", body, parse_mode="html")
+                    log.info("Saved deleted message from %s", cached['sender_id'])
             except Exception as e:
                 log.warning(f"deleted save failed: {e}")

@@ -37,6 +37,7 @@ def register(client) -> None:
     async def casino_jackpot_cmd(event: events.NewMessage.Event) -> None:
         """Max-speed parallel casino spam until jackpot (three 7s)."""
         chat_id = event.chat_id
+        reply_to = event.reply_to_msg_id if event.is_reply else None
         try:
             await event.delete()
         except Exception:
@@ -50,7 +51,7 @@ def register(client) -> None:
             if stop.is_set():
                 return
             try:
-                msg = await client.send_message(chat_id, file=InputMediaDice("🎰"))
+                msg = await client.send_message(chat_id, file=InputMediaDice("🎰"), reply_to=reply_to)
                 casts["n"] += 1
                 val = None
                 if msg and getattr(msg, "media", None) and hasattr(msg.media, "value"):
